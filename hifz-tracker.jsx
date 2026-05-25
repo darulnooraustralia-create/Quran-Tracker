@@ -301,4 +301,333 @@ function FeedbackSection({ payments, onUpdate, canEdit }) {
       {canEdit
         ? <textarea value={entry.comment||""} onChange={e=>upd(e.target.value)} placeholder="Write your feedback here..."
             style={{...inp.small, width:"100%", boxSizing:"border-box", resize:"vertical", minHeight:100, lineHeight:1.6, marginBottom:14}}/>
-        : <div style={{background:"rgba(255,255,255,0.03)", border:"1px solid rgba(200,169,110,0.1)", borderRadius:8,
+        : <div style={{background:"rgba(255,255,255,0.03)", border:"1px solid rgba(200,169,110,0.1)", borderRadius:8, padding:12, minHeight:60, marginBottom:14}}>
+            <p style={{color:entry.comment?"#d4c4a8":"#2d3f4f", fontSize:13, margin:0, fontStyle:entry.comment?"normal":"italic"}}>{entry.comment||"No feedback yet."}</p>
+          </div>
+      }
+      <p style={{color:"#6b7f8e", fontSize:10, margin:"0 0 8px", letterSpacing:1}}>PREVIOUS FEEDBACK — {selYear}</p>
+      <div style={{display:"flex", flexDirection:"column", gap:6, maxHeight:200, overflowY:"auto"}}>
+        {MONTHS.filter(m=>payments?.[selYear]?.[m]?.comment).map(m=>(
+          <div key={m} onClick={()=>setSelMonth(m)} style={{background:"rgba(255,255,255,0.03)", border:`1px solid ${m===selMonth?"rgba(200,169,110,0.4)":"rgba(255,255,255,0.06)"}`, borderRadius:8, padding:"9px 12px", cursor:"pointer"}}>
+            <p style={{color:"#c8a96e", fontSize:10, margin:"0 0 3px", letterSpacing:1}}>{m.toUpperCase()}</p>
+            <p style={{color:"#d4c4a8", fontSize:12, margin:0}}>{payments[selYear][m].comment}</p>
+          </div>
+        ))}
+        {!MONTHS.some(m=>payments?.[selYear]?.[m]?.comment) && <p style={{color:"#2d3f4f", fontSize:12, margin:0, fontStyle:"italic"}}>No feedback for {selYear} yet.</p>}
+      </div>
+    </div>
+  );
+}
+
+function StudentDetail({ student, onBack, isAdmin, isParent, onSave }) {
+  const [tab, setTab] = useState("progress");
+  const [activeWeek, setActiveWeek] = useState(0);
+  const [selYear, setSelYear] = useState(2026);
+  const [selMonth, setSelMonth] = useState(MONTHS[new Date().getMonth()]);
+  const [editing, setEditing] = useState(false);
+  const [local, setLocal] = useState(JSON.parse(JSON.stringify(student)));
+  const [saving, setSaving] = useState(false);
+
+  const getWeeks = () => local.quranProgress?.[selYear]?.[selMonth] || EMPTY_WEEKS();
+
+  const cellChange = (di,field,val) => {
+    const u=JSON.parse(JSON.stringify(local));
+    if(!u.quranProgress) u.quranProgress=EMPTY_PROGRESS();
+    u.quranProgress[selYear][selMonth][activeWeek].days[di][field]=val;
+    setLocal(u);
+  };
+  const feedbackChange = (val) => {
+    const u=JSON.parse(JSON.stringify(local));
+    if(!u.quranProgress) u.quranProgress=EMPTY_PROGRESS();
+    u.quranProgress[selYear][selMonth][activeWeek].teacherFeedback=val;
+    setLocal(u);
+  };
+  const fieldChange = (f,v) => setLocal(p=>({...p,[f]:v}));
+  const summaryChange = (k,v) => setLocal(p=>({...p,summary:{...p.summary,[k]:v}}));
+  const paymentUpdate = (updated) => {
+    const u={...local,payments:updated};
+    setLocal(u);
+    onSave(u);
+  };
+  const save = async () => {
+    setSaving(true);
+    await onSave(local);
+    setSaving(false);
+    setEditing(false);
+  };
+  const cancel = () => { setLocal(JSON.parse(JSON.stringify(student))); setEditing(false); };
+
+  return (
+    <div>
+      <button onClick={onBack} style={{...btn.ghost, marginBottom:16, display:"flex", alignItems:"center", gap:6, border:"none", color:"#c8a96e", padding:"0 0 4px"}}>← Back</button>
+
+      {/* Header */}
+      <div style={{display:"flex", alignItems:"center", gap:16, marginBottom:18, flexWrap:"wrap"}}>
+        <div style={{width:56,height:56,borderRadius:"50%",background:"linear-gradient(135deg,#c8a96e,#8b6914)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,color:"#0f1923",fontWeight:"bold",flexShrink:0}}>
+          {local.name?local.name.charAt(0).toUpperCase():"?"}
+        </div>
+        <div style={{flex:1}}>
+          {isAdmin&&editing ? (
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>
+              <input value={local.name} onChange={e=>fieldChange("name",e.target.value)} placeholder="Student Name" style={{...inp.small, fontSize:16}}/>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                <input value={local.grade} onChange={e=>fieldChange("grade",e.target.value)} placeholder="Grade" style={{...inp.small, flex:1}}/>
+                <input value={local.teacher} onChange={e=>fieldChange("teacher",e.target.value)} placeholder="Teacher" style={{...inp.small, flex:1}}/>
+                <input type="number" min="0" max="100" value={local.progress} onChange={e=>fieldChange("progress",Number(e.target.value))} placeholder="%" style={{...inp.small, width:60}}/>
+              </div>
+            </div>
+          ) : (
+            <>
+              <h2 style={{color:"#e8dcc8",margin:0,fontSize:20,fontWeight:"normal"}}>{local.name||"No name"}</h2>
+              <p style={{color:"#6b7f8e",margin:"3px 0 0",fontSize:13}}>{local.grade||"—"} · {local.teacher||"—"}</p>
+            </>
+          )}
+        </div>
+        <ProgressArc pct={local.progress}/>
+      </div>
+
+      {/* Tabs */}
+      <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>
+        <button style={btn.tab(tab==="progress")} onClick={()=>setTab("progress")}>📖 Progress</button>
+        <button style={btn.tab(tab==="feedback")} onClick={()=>setTab("feedback")}>💬 Feedback</button>
+        <button style={btn.tab(tab==="payment")} onClick={()=>setTab("payment")}>💳 Payment</button>
+      </div>
+
+      {tab==="progress" && (
+        <>
+          <div style={{display:"flex",gap:10,marginBottom:12,flexWrap:"wrap",alignItems:"flex-end"}}>
+            <div>
+              <label style={{color:"#8fa3b3",fontSize:10,letterSpacing:1,display:"block",marginBottom:5}}>YEAR</label>
+              <select value={selYear} onChange={e=>{setSelYear(Number(e.target.value));setActiveWeek(0);}} style={{...inp.small,cursor:"pointer",color:"#c8a96e",fontWeight:"bold"}}>
+                {YEARS.map(y=><option key={y} value={y} style={{background:"#0a1a0a"}}>{y}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{color:"#8fa3b3",fontSize:10,letterSpacing:1,display:"block",marginBottom:5}}>MONTH</label>
+              <select value={selMonth} onChange={e=>{setSelMonth(e.target.value);setActiveWeek(0);}} style={{...inp.small,cursor:"pointer"}}>
+                {MONTHS.map(m=><option key={m} value={m} style={{background:"#0a1a0a"}}>{m}</option>)}
+              </select>
+            </div>
+            {isAdmin && (
+              <div style={{marginLeft:"auto",display:"flex",gap:6}}>
+                {editing
+                  ? <><button onClick={save} style={{...btn.primary,padding:"7px 16px"}}>{saving?"Saving...":"✓ Save"}</button>
+                      <button onClick={cancel} style={{...btn.ghost,padding:"7px 14px"}}>Cancel</button></>
+                  : <button onClick={()=>setEditing(true)} style={{...btn.ghost}}>✎ Edit</button>
+                }
+              </div>
+            )}
+          </div>
+
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+            <div style={{height:1,flex:1,background:"rgba(200,169,110,0.1)"}}/>
+            <span style={{color:"#c8a96e",fontSize:11,letterSpacing:2}}>{selMonth.toUpperCase()} {selYear}</span>
+            <div style={{height:1,flex:1,background:"rgba(200,169,110,0.1)"}}/>
+          </div>
+
+          <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
+            {getWeeks().map((w,i)=>(
+              <button key={i} onClick={()=>setActiveWeek(i)} style={btn.week(activeWeek===i)}>Week {w.week}</button>
+            ))}
+          </div>
+
+          <div style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(200,169,110,0.12)",borderRadius:12,overflow:"hidden",marginBottom:16}}>
+            <WeekTable weekData={getWeeks()[activeWeek]} editing={isAdmin&&editing} onCellChange={cellChange} onFeedbackChange={feedbackChange}/>
+          </div>
+
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            <div style={{background:"rgba(100,200,100,0.04)",border:"1px solid rgba(100,200,100,0.15)",borderRadius:10,padding:16}}>
+              <p style={{color:"#7dcf9e",fontSize:10,letterSpacing:1,margin:"0 0 8px"}}>✦ STRENGTHS</p>
+              {isAdmin&&editing
+                ? <textarea value={local.summary.strengths} onChange={e=>summaryChange("strengths",e.target.value)} placeholder="Enter strengths..." style={{...inp.small,width:"100%",boxSizing:"border-box",resize:"vertical",minHeight:60}}/>
+                : <p style={{color:local.summary.strengths?"#c8dcc0":"#2d3f4f",fontSize:12,margin:0,lineHeight:1.5}}>{local.summary.strengths||"Not filled yet"}</p>
+              }
+            </div>
+            <div style={{background:"rgba(200,150,100,0.04)",border:"1px solid rgba(200,150,100,0.15)",borderRadius:10,padding:16}}>
+              <p style={{color:"#e0a87c",fontSize:10,letterSpacing:1,margin:"0 0 8px"}}>✦ TO IMPROVE</p>
+              {isAdmin&&editing
+                ? <textarea value={local.summary.improve} onChange={e=>summaryChange("improve",e.target.value)} placeholder="Areas to improve..." style={{...inp.small,width:"100%",boxSizing:"border-box",resize:"vertical",minHeight:60}}/>
+                : <p style={{color:local.summary.improve?"#dcc8b0":"#2d3f4f",fontSize:12,margin:0,lineHeight:1.5}}>{local.summary.improve||"Not filled yet"}</p>
+              }
+            </div>
+          </div>
+        </>
+      )}
+
+      {tab==="feedback" && <FeedbackSection payments={local.payments} onUpdate={paymentUpdate} canEdit={isParent||isAdmin}/>}
+      {tab==="payment" && <PaymentSection payments={local.payments} onUpdate={paymentUpdate} canEdit={isParent||isAdmin}/>}
+    </div>
+  );
+}
+
+function StudentCard({ student, onClick }) {
+  return (
+    <button onClick={onClick} style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(200,169,110,0.12)",borderRadius:12,padding:18,cursor:"pointer",textAlign:"left",fontFamily:"inherit",display:"flex",alignItems:"center",gap:14,width:"100%",transition:"border-color 0.2s"}}
+      onMouseEnter={e=>e.currentTarget.style.borderColor="rgba(200,169,110,0.45)"}
+      onMouseLeave={e=>e.currentTarget.style.borderColor="rgba(200,169,110,0.12)"}>
+      <div style={{width:46,height:46,borderRadius:"50%",background:student.name?"linear-gradient(135deg,#c8a96e,#8b6914)":"rgba(200,169,110,0.08)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,color:student.name?"#0f1923":"#3d5166",fontWeight:"bold",flexShrink:0}}>
+        {student.name?student.name.charAt(0).toUpperCase():"?"}
+      </div>
+      <div style={{flex:1}}>
+        <p style={{color:student.name?"#e8dcc8":"#3d5166",fontSize:14,margin:"0 0 3px",fontWeight:"normal"}}>{student.name||"Empty"}</p>
+        <p style={{color:"#6b7f8e",fontSize:11,margin:"0 0 8px"}}>{student.grade||"—"} · {student.teacher||"—"}</p>
+        <div style={{background:"rgba(200,169,110,0.1)",borderRadius:3,height:4,overflow:"hidden"}}>
+          <div style={{width:`${student.progress}%`,height:"100%",background:"linear-gradient(90deg,#c8a96e,#e8c882)",borderRadius:3}}/>
+        </div>
+        <p style={{color:student.progress>0?"#c8a96e":"#3d5166",fontSize:10,margin:"4px 0 0"}}>{student.progress>0?`${student.progress}% completed`:"Not started"}</p>
+      </div>
+    </button>
+  );
+}
+
+function AdminView({ students, onSelect, accounts, onAssignLogin }) {
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [showLoginForm, setShowLoginForm] = useState(null);
+  const [newLogin, setNewLogin] = useState("");
+  const [newPass, setNewPass] = useState("");
+  const [loginErr, setLoginErr] = useState("");
+
+  const familyIds = FAMILY_GROUPS.flatMap(g=>g.ids);
+  const hasLogin = (id) => accounts.find(a=>a.role==="parent"&&a.studentIds.includes(id));
+
+  const filtered = search.trim()
+    ? students.filter(s=>s.name.toLowerCase().includes(search.toLowerCase())).sort((a,b)=>a.name.localeCompare(b.name))
+    : null;
+
+  const individual = students.filter(s=>s.name&&!familyIds.includes(s.id)).sort((a,b)=>a.name.localeCompare(b.name));
+
+  const divider = (label) => (
+    <div style={{display:"flex",alignItems:"center",gap:10,margin:"20px 0 12px"}}>
+      <div style={{height:1,flex:1,background:"rgba(200,169,110,0.1)"}}/>
+      <span style={{color:"#c8a96e",fontSize:10,letterSpacing:2}}>{label}</span>
+      <div style={{height:1,flex:1,background:"rgba(200,169,110,0.1)"}}/>
+    </div>
+  );
+
+  return (
+    <div>
+      {/* Search + filter */}
+      <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
+        <div style={{position:"relative",flex:1,minWidth:180}}>
+          <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#6b7f8e",fontSize:13}}>🔍</span>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search student..."
+            style={{...inp.base,paddingLeft:32,fontSize:13}}/>
+          {search && <button onClick={()=>setSearch("")} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:"#6b7f8e",cursor:"pointer",fontSize:14}}>✕</button>}
+        </div>
+        <select value={filter} onChange={e=>setFilter(e.target.value)} style={{...inp.small,cursor:"pointer",color:"#c8a96e"}}>
+          <option value="all" style={{background:"#0a1a0a"}}>👥 All</option>
+          <option value="individual" style={{background:"#0a1a0a"}}>🧑 Individual</option>
+          <option value="families" style={{background:"#0a1a0a"}}>👨‍👩‍👧‍👦 Families</option>
+        </select>
+      </div>
+
+      {/* Search results */}
+      {filtered ? (
+        filtered.length===0
+          ? <p style={{color:"#3d5166",fontStyle:"italic",fontSize:13}}>No students found.</p>
+          : <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:10}}>
+              {filtered.map(s=><StudentCard key={s.id} student={s} onClick={()=>onSelect(s)}/>)}
+            </div>
+      ) : (
+        <>
+          {(filter==="all"||filter==="individual") && (
+            <>
+              {divider(`INDIVIDUAL STUDENTS (${individual.length})`)}
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:10}}>
+                {individual.map(s=><StudentCard key={s.id} student={s} onClick={()=>onSelect(s)}/>)}
+              </div>
+            </>
+          )}
+          {(filter==="all"||filter==="families") && (
+            <>
+              {divider(`FAMILY GROUPS (${FAMILY_GROUPS.length})`)}
+              <div style={{display:"flex",flexDirection:"column",gap:14}}>
+                {FAMILY_GROUPS.map(group=>{
+                  const gs=group.ids.map(id=>students.find(s=>s.id===id)).filter(Boolean).sort((a,b)=>a.name.localeCompare(b.name));
+                  if(!gs.length) return null;
+                  return (
+                    <div key={group.label} style={{background:"rgba(200,169,110,0.03)",border:"1px solid rgba(200,169,110,0.1)",borderRadius:12,padding:"14px 14px 10px"}}>
+                      <p style={{color:"#c8a96e",fontSize:11,letterSpacing:1,margin:"0 0 10px"}}>👨‍👩‍👧‍👦 {group.label.toUpperCase()} · {gs.length} students</p>
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(250px,1fr))",gap:8}}>
+                        {gs.map(s=><StudentCard key={s.id} student={s} onClick={()=>onSelect(s)}/>)}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function Dashboard({ account, onLogout }) {
+  const [students, setStudents] = useState(STUDENTS);
+  const [accounts, setAccounts] = useState(ACCOUNTS);
+  const [selected, setSelected] = useState(null);
+  const isAdmin = account.role==="admin";
+  const isParent = account.role==="parent";
+  const visibleStudents = students.filter(s=>isAdmin?true:account.studentIds.includes(s.id));
+
+  useEffect(() => {
+    const unsubs = STUDENTS.map(s => {
+      const ref = doc(db, "students", String(s.id));
+      return onSnapshot(ref, snap => {
+        if(snap.exists()) {
+          const data = snap.data();
+          setStudents(prev => prev.map(p => p.id===s.id ? {...p,...data} : p));
+          setSelected(prev => prev&&prev.id===s.id ? {...prev,...data} : prev);
+        }
+      });
+    });
+    return () => unsubs.forEach(u=>u());
+  }, []);
+
+  const handleSave = async (updated) => {
+    try { await setDoc(doc(db,"students",String(updated.id)), updated); } catch(e) { console.error(e); }
+    setStudents(prev=>prev.map(s=>s.id===updated.id?updated:s));
+    setSelected(updated);
+  };
+
+  return (
+    <div style={{minHeight:"100vh",background:"#0a1a0a",fontFamily:"Georgia,serif"}}>
+      <div style={{maxWidth:900,margin:"0 auto",padding:"24px 20px"}}>
+        {/* Header */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:28,flexWrap:"wrap",gap:10}}>
+          <div>
+            <h1 style={{color:"#c8a96e",fontSize:18,margin:0,fontWeight:"bold",letterSpacing:1}}>Darul Noor Education Hub</h1>
+            <p style={{color:"#2d5a2d",fontSize:11,margin:"3px 0 0",letterSpacing:1}}>
+              {isAdmin?"ADMIN":"PARENT"} · QUR'AN TRACKER
+<span style={{color:"#2d7a2d",marginLeft:8}}>● Live</span>
+            </p>
+          </div>
+          <button onClick={onLogout} style={{...btn.ghost,fontSize:11,padding:"6px 14px"}}>Sign Out</button>
+        </div>
+
+        {selected ? (
+          <StudentDetail student={selected} onBack={()=>setSelected(null)} isAdmin={isAdmin} isParent={isParent} onSave={handleSave}/>
+        ) : (
+          <>
+            <p style={{color:"#6b7f8e",fontSize:13,marginBottom:16}}>
+              {isAdmin?`${visibleStudents.length} students`:visibleStudents.length>1?`${visibleStudents.length} children`:"Your child's progress"}
+            </p>
+            {isAdmin
+              ? <AdminView students={visibleStudents} onSelect={setSelected} accounts={accounts} onAssignLogin={()=>{}}/>
+              : <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:12}}>
+                  {visibleStudents.map(s=><StudentCard key={s.id} student={s} onClick={()=>setSelected(s)}/>)}
+                </div>
+            }
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default function App() {
+  const [account, setAccount] = useState(null);
+  return account ? <Dashboard account={account} onLogout={()=>setAccount(null)}/> : <LoginScreen onLogin={setAccount}/>;
+}
