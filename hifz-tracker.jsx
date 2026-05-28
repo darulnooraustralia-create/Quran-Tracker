@@ -279,6 +279,45 @@ function AnnouncementBadge({ announcements, isAdmin, onAdd, onDelete }) {
   );
 }
 
+// ── Announcement Board ──
+function AnnouncementBoard({announcements,isAdmin,onMarkAllRead,onDelete}){
+  const [collapsed,setCollapsed]=useState(false);
+  const unread=announcements.filter(a=>!a.read).length;
+  const sorted=[...announcements].reverse();
+  if(!sorted.length&&!isAdmin)return null;
+  const al=unread>0;
+  return(
+    <div style={{marginBottom:22,borderRadius:16,overflow:"hidden",border:`2px solid ${al?"#EF9A9A":"#A5D6A7"}`,boxShadow:al?"0 4px 20px rgba(183,28,28,0.12)":"0 2px 10px rgba(27,94,32,0.08)"}}>
+      <div style={{background:al?"linear-gradient(135deg,#B71C1C,#D32F2F)":"linear-gradient(135deg,#2E7D32,#1B5E20)",padding:"13px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer"}} onClick={()=>setCollapsed(p=>!p)}>
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          <span style={{fontSize:22}}>📋</span>
+          <span style={{color:"#fff",fontSize:16,fontWeight:"800",letterSpacing:1}}>NOTICE BOARD</span>
+          {al?<span style={{background:"#fff",color:"#B71C1C",fontSize:13,fontWeight:"bold",borderRadius:20,padding:"2px 12px"}}>{unread} NEW</span>
+             :<span style={{color:"rgba(255,255,255,0.75)",fontSize:13}}>All up to date</span>}
+        </div>
+        <span style={{color:"#fff",fontSize:18,transform:collapsed?"rotate(-90deg)":"rotate(0deg)",transition:"transform 0.2s"}}>▾</span>
+      </div>
+      {!collapsed&&(
+        <div style={{background:al?"#FFF8F8":"#F8FFF8",padding:"16px 18px",display:"flex",flexDirection:"column",gap:12}}>
+          {!sorted.length&&<p style={{color:C.textLight,fontSize:14,textAlign:"center",fontStyle:"italic",margin:"8px 0"}}>No announcements yet.</p>}
+          {sorted.map((a,i)=>(
+            <div key={i} style={{background:a.read?"#fff":al?"#fff5f5":"#f0fff0",border:`2px solid ${a.read?C.border:al?"#EF9A9A":"#81C784"}`,borderLeft:`6px solid ${a.read?C.borderMid:al?"#D32F2F":"#2E7D32"}`,borderRadius:12,padding:"14px 16px",position:"relative"}}>
+              {!a.read&&<span style={{position:"absolute",top:10,right:12,background:al?"#D32F2F":C.primary,color:"#fff",fontSize:11,fontWeight:"bold",borderRadius:10,padding:"2px 9px",letterSpacing:1}}>NEW</span>}
+              <p style={{color:a.read?C.textMid:"#B71C1C",fontSize:16,fontWeight:"800",margin:"0 0 6px",paddingRight:50,lineHeight:1.3}}>{a.title}</p>
+              <p style={{color:a.read?C.textBody:C.text,fontSize:15,margin:"0 0 8px",lineHeight:1.6,fontWeight:a.read?"normal":"500"}}>{a.text}</p>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:6}}>
+                <p style={{color:C.textLight,fontSize:12,margin:0}}>📅 {a.time}</p>
+                {isAdmin&&<button onClick={()=>onDelete(announcements.length-1-i)} style={{background:"none",border:`1px solid ${C.danger}`,borderRadius:8,padding:"4px 12px",color:C.danger,cursor:"pointer",fontSize:13,fontFamily:FONT}}>🗑 Delete</button>}
+              </div>
+            </div>
+          ))}
+          {!isAdmin&&unread>0&&<button onClick={onMarkAllRead} style={{...S.btnGhost,alignSelf:"flex-end",fontSize:14,padding:"8px 18px",borderColor:"#B71C1C",color:"#B71C1C"}}>✓ Mark all as read</button>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Login Screen ──
 function LoginScreen({ onLogin }) {
   const [login, setLogin] = useState(()=>{ try{return localStorage.getItem("dn_login")||"";}catch{return "";} });
@@ -801,6 +840,12 @@ function Dashboard({ account, onLogout }) {
     setAnnouncements(newList);
   };
 
+  const markAllAnnouncementsRead = async () => {
+    const newList = announcements.map(a=>({...a,read:true}));
+    await setDoc(doc(db,"config","announcements"), { list: newList });
+    setAnnouncements(newList);
+  };
+
   const clearAllNotifs = async () => {
     if(isAdmin){
       for(const s of students){
@@ -851,6 +896,16 @@ function Dashboard({ account, onLogout }) {
             </div>
           </div>
         </div>
+
+        {/* Announcement Board — always visible below header */}
+        {!selected && (
+          <AnnouncementBoard
+            announcements={announcements}
+            isAdmin={isAdmin}
+            onMarkAllRead={markAllAnnouncementsRead}
+            onDelete={deleteAnnouncement}
+          />
+        )}
 
         {selected?(
           <StudentDetail student={selected} onBack={()=>setSelected(null)} isAdmin={isAdmin} isParent={isParent} onSave={handleSave}/>
