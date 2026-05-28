@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, setDoc, onSnapshot } from "firebase/firestore";
+import { getFirestore, doc, setDoc, onSnapshot, collection, addDoc, query, orderBy } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBdriAdMX7C763wro60zYFGfXfXQE27q-g",
@@ -54,6 +54,9 @@ const STUDENTS = [
   makeStudent(27,"Abrar Farzad","male"), makeStudent(28,"Ali Faraz","male"),
   makeStudent(29,"",""), makeStudent(30,"",""), makeStudent(31,"",""),
   makeStudent(32,"",""), makeStudent(33,"",""),
+  makeStudent(34,"Muhammad Aayan Ali","male"), makeStudent(35,"Aaisha Ali","female"),
+  makeStudent(36,"Qemr D","female"), makeStudent(37,"Nihili D","female"), makeStudent(38,"Fatima D","female"),
+  makeStudent(39,"",""), makeStudent(40,"",""), makeStudent(41,"",""),
 ];
 
 const ACCOUNTS = [
@@ -77,6 +80,8 @@ const ACCOUNTS = [
   { login:"family.siddik@darulnoor", password:"siddik123", role:"parent", studentIds:[24,25,26] },
   { login:"abrar.f@darulnoor", password:"farzad123", role:"parent", studentIds:[27] },
   { login:"ali.f@darulnoor", password:"faraz123", role:"parent", studentIds:[28] },
+  { login:"family.ali@darulnoor", password:"ali123", role:"parent", studentIds:[34,35] },
+  { login:"family.d@darulnoor", password:"dfamily123", role:"parent", studentIds:[36,37,38] },
 ];
 
 const FAMILY_GROUPS = [
@@ -86,6 +91,14 @@ const FAMILY_GROUPS = [
   { label:"Muhammad & Fatima Family", ids:[16,17,18,19] },
   { label:"Abdul Aziz Family", ids:[21,22] },
   { label:"Siddik Family", ids:[24,25,26] },
+  { label:"Ali Family", ids:[34,35] },
+  { label:"D Family", ids:[36,37,38] },
+];
+
+const FUTURE_FAMILY_SLOTS = [
+  { label:"Future Family A", ids:[39] },
+  { label:"Future Family B", ids:[40] },
+  { label:"Future Family C", ids:[41] },
 ];
 
 // ── Avatars matching reference images exactly ──
@@ -162,25 +175,109 @@ function Avatar({ student, size=64 }) {
   );
 }
 
-// ── Design tokens ──
+// ── Design System ──
+const FONT = "'Inter','Segoe UI','Helvetica Neue',Arial,sans-serif";
 const C = {
-  bg:"#f0f5f0", card:"#ffffff", border:"#c8dcc8",
-  primary:"#2d6a2d", gold:"#8b6914", goldLight:"#c8a96e",
-  text:"#1a2a1a", textMid:"#4a6a4a", textLight:"#8aaa8a",
-  danger:"#c0392b", success:"#27ae60", warning:"#e67e22",
-  notif:"#e74c3c",
+  bg:"#F5F7F5", bgSubtle:"#EDF4ED", card:"#FFFFFF", cardHover:"#F8FBF8",
+  primary:"#1B5E20", primaryMid:"#2E7D32", primaryLight:"#4CAF50", primaryBg:"#E8F5E9",
+  gold:"#9E6C00", goldLight:"#F9A825", goldBg:"#FFFDE7",
+  border:"#C8E6C9", borderMid:"#A5D6A7",
+  text:"#1A1A1A", textBody:"#2D3A2D", textMid:"#4E6B4E", textLight:"#7A977A", textMuted:"#AAC0AA",
+  success:"#2E7D32", successBg:"#E8F5E9",
+  danger:"#C62828", dangerBg:"#FFEBEE",
+  warning:"#E65100", warningBg:"#FFF3E0",
+  notif:"#D32F2F", announce:"#E65100",
+};
+const T = { xs:12, sm:14, base:16, lg:18, xl:22, xxl:28 };
+const SH = {
+  sm:"0 1px 4px rgba(0,0,0,0.06)",
+  md:"0 3px 12px rgba(0,0,0,0.08)",
+  lg:"0 6px 24px rgba(0,0,0,0.10)",
+  xl:"0 10px 40px rgba(0,0,0,0.12)",
 };
 const S = {
-  input:{ width:"100%", background:"#f8faf8", border:`1.5px solid ${C.border}`, borderRadius:10, padding:"12px 16px", color:C.text, fontSize:16, outline:"none", boxSizing:"border-box", fontFamily:"Georgia,serif" },
-  inputSm:{ background:"#f8faf8", border:`1.5px solid ${C.border}`, borderRadius:8, padding:"9px 13px", color:C.text, fontSize:15, outline:"none", fontFamily:"Georgia,serif" },
-  btnPrimary:{ background:C.primary, border:"none", borderRadius:10, padding:"12px 24px", color:"#fff", fontSize:16, fontWeight:"bold", cursor:"pointer", fontFamily:"Georgia,serif" },
-  btnGold:{ background:C.gold, border:"none", borderRadius:10, padding:"12px 24px", color:"#fff", fontSize:16, fontWeight:"bold", cursor:"pointer", fontFamily:"Georgia,serif" },
-  btnGhost:{ background:"transparent", border:`2px solid ${C.primary}`, borderRadius:10, padding:"11px 22px", color:C.primary, fontSize:16, cursor:"pointer", fontFamily:"Georgia,serif", fontWeight:"bold" },
-  btnDanger:{ background:"transparent", border:`2px solid ${C.danger}`, borderRadius:10, padding:"11px 22px", color:C.danger, fontSize:16, cursor:"pointer", fontFamily:"Georgia,serif" },
-  btnSuccess:{ background:C.success, border:"none", borderRadius:10, padding:"11px 22px", color:"#fff", fontSize:16, fontWeight:"bold", cursor:"pointer", fontFamily:"Georgia,serif" },
-  tab:(a)=>({ padding:"10px 22px", borderRadius:22, border:`2px solid ${a?C.primary:C.border}`, background:a?"#e0f0e0":"#fff", color:a?C.primary:C.textMid, fontSize:15, cursor:"pointer", fontFamily:"Georgia,serif", fontWeight:a?"bold":"normal" }),
-  card:{ background:"#fff", border:`1px solid ${C.border}`, borderRadius:14, padding:22, boxShadow:"0 2px 10px rgba(0,0,0,0.05)" },
+  input:{ width:"100%", background:"#FAFFFE", border:"1.5px solid #C8E6C9", borderRadius:10, padding:"13px 16px", color:"#1A1A1A", fontSize:16, outline:"none", boxSizing:"border-box", fontFamily:"'Inter','Segoe UI',sans-serif" },
+  inputSm:{ background:"#FAFFFE", border:"1.5px solid #C8E6C9", borderRadius:8, padding:"9px 13px", color:"#1A1A1A", fontSize:14, outline:"none", fontFamily:"'Inter','Segoe UI',sans-serif" },
+  btnPrimary:{ background:"linear-gradient(135deg,#2E7D32,#1B5E20)", border:"none", borderRadius:10, padding:"12px 24px", color:"#fff", fontSize:16, fontWeight:"700", cursor:"pointer", fontFamily:"'Inter','Segoe UI',sans-serif", boxShadow:"0 2px 8px rgba(27,94,32,0.3)" },
+  btnGold:{ background:"linear-gradient(135deg,#F9A825,#9E6C00)", border:"none", borderRadius:10, padding:"12px 24px", color:"#fff", fontSize:16, fontWeight:"700", cursor:"pointer", fontFamily:"'Inter','Segoe UI',sans-serif", boxShadow:"0 2px 8px rgba(158,108,0,0.25)" },
+  btnGhost:{ background:"transparent", border:"2px solid #2E7D32", borderRadius:10, padding:"10px 22px", color:"#2E7D32", fontSize:16, cursor:"pointer", fontFamily:"'Inter','Segoe UI',sans-serif", fontWeight:"600" },
+  btnDanger:{ background:"transparent", border:"2px solid #C62828", borderRadius:10, padding:"10px 22px", color:"#C62828", fontSize:16, cursor:"pointer", fontFamily:"'Inter','Segoe UI',sans-serif" },
+  btnSuccess:{ background:"linear-gradient(135deg,#4CAF50,#2E7D32)", border:"none", borderRadius:10, padding:"10px 22px", color:"#fff", fontSize:16, fontWeight:"700", cursor:"pointer", fontFamily:"'Inter','Segoe UI',sans-serif" },
+  tab:(a)=>({ padding:"10px 22px", borderRadius:24, border:a?"2px solid #2E7D32":"2px solid #C8E6C9", background:a?"#E8F5E9":"#fff", color:a?"#1B5E20":"#4E6B4E", fontSize:14, cursor:"pointer", fontFamily:"'Inter','Segoe UI',sans-serif", fontWeight:a?"700":"400" }),
+  card:{ background:"#fff", border:"1px solid #C8E6C9", borderRadius:16, padding:24, boxShadow:"0 2px 10px rgba(0,0,0,0.05)" },
 };
+
+
+// ── Announcement Badge ──
+function AnnouncementBadge({ announcements, isAdmin, onAdd, onDelete }) {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [title, setTitle] = useState("");
+  const [saving, setSaving] = useState(false);
+  const unread = announcements.filter(a => !a.read).length;
+
+  const handleAdd = async () => {
+    if (!title.trim() || !draft.trim()) return;
+    setSaving(true);
+    await onAdd({ title: title.trim(), text: draft.trim(), time: new Date().toLocaleString("en-AU"), read: false });
+    setTitle(""); setDraft(""); setSaving(false);
+  };
+
+  return (
+    <div style={{position:"relative"}}>
+      <button onClick={()=>setOpen(p=>!p)} style={{background:unread>0?"#fff8e8":"#f8f8f8", border:`1.5px solid ${unread>0?"#e0c060":C.border}`, borderRadius:12, padding:"10px 16px", cursor:"pointer", display:"flex", alignItems:"center", gap:8, fontSize:22, position:"relative"}}>
+        📢
+        {unread>0 && <span style={{position:"absolute", top:-8, right:-8, background:"#e67e22", color:"#fff", borderRadius:"50%", minWidth:22, height:22, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:"bold", fontFamily:"'Inter','Segoe UI',sans-serif", padding:"0 4px"}}>{unread}</span>}
+      </button>
+
+      {open && (
+        <div style={{position:"absolute", top:60, right:0, width:360, background:"#fff", border:`1.5px solid ${C.border}`, borderRadius:16, boxShadow:"0 8px 32px rgba(0,0,0,0.12)", zIndex:1000, overflow:"hidden"}}>
+          {/* Header */}
+          <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", padding:"14px 18px", borderBottom:`1px solid ${C.border}`, background:"#FFF3E0"}}>
+            <p style={{color:"#E65100", fontSize:16, fontWeight:"bold", margin:0}}>📢 Announcements</p>
+            <button onClick={()=>setOpen(false)} style={{background:"none", border:"none", color:C.textLight, cursor:"pointer", fontSize:20}}>✕</button>
+          </div>
+
+          {/* Admin: compose new announcement */}
+          {isAdmin && (
+            <div style={{padding:"14px 18px", borderBottom:`1px solid ${C.border}`, background:"#fffdf8"}}>
+              <p style={{color:C.textMid, fontSize:13, fontWeight:"bold", margin:"0 0 8px"}}>NEW ANNOUNCEMENT</p>
+              <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Title (e.g. Holiday Notice)"
+                style={{...S.inputSm, width:"100%", boxSizing:"border-box", marginBottom:8, fontSize:14}}/>
+              <textarea value={draft} onChange={e=>setDraft(e.target.value)} placeholder="Write your announcement here..."
+                style={{...S.inputSm, width:"100%", boxSizing:"border-box", resize:"vertical", minHeight:70, lineHeight:1.5, marginBottom:10}}/>
+              <button onClick={handleAdd} disabled={saving||!title.trim()||!draft.trim()}
+                style={{...S.btnGold, fontSize:14, padding:"9px 18px", opacity:(saving||!title.trim()||!draft.trim())?0.5:1}}>
+                {saving?"Posting...":"📤 Post Announcement"}
+              </button>
+            </div>
+          )}
+
+          {/* Announcement list */}
+          <div style={{maxHeight:320, overflowY:"auto"}}>
+            {announcements.length===0
+              ? <p style={{color:C.textLight, fontSize:14, margin:"20px", textAlign:"center", fontStyle:"italic"}}>No announcements yet.</p>
+              : [...announcements].reverse().map((a,i)=>(
+                <div key={i} style={{padding:"14px 18px", borderBottom:`1px solid ${C.border}`, background:a.read?"#fff":"#fffbf0"}}>
+                  <div style={{display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:8}}>
+                    <div style={{flex:1}}>
+                      <p style={{color:C.text, fontSize:15, fontWeight:"bold", margin:"0 0 5px"}}>{a.title}</p>
+                      <p style={{color:C.text, fontSize:14, margin:"0 0 6px", lineHeight:1.5}}>{a.text}</p>
+                      <p style={{color:C.textLight, fontSize:12, margin:0}}>📅 {a.time}</p>
+                    </div>
+                    {isAdmin && (
+                      <button onClick={()=>onDelete(announcements.length-1-i)} style={{background:"none", border:"none", color:C.danger, cursor:"pointer", fontSize:16, flexShrink:0, padding:"2px 6px"}}>🗑️</button>
+                    )}
+                  </div>
+                </div>
+              ))
+            }
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ── Login Screen ──
 function LoginScreen({ onLogin }) {
@@ -197,7 +294,7 @@ function LoginScreen({ onLogin }) {
   };
 
   return (
-    <div style={{minHeight:"100vh",background:"linear-gradient(160deg,#e0ede0,#eef4ee,#e4f0e4)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Georgia,serif"}}>
+    <div style={{minHeight:"100vh",background:"linear-gradient(160deg,#EDF4ED 0%,#F5F7F5 50%,#E8F5E9 100%)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Inter','Segoe UI',sans-serif"}}>
       <div style={{width:"100%",maxWidth:440,padding:"0 24px"}}>
         <div style={{textAlign:"center",marginBottom:32}}>
           <div style={{width:120,height:120,borderRadius:"50%",background:"#fff",border:`3px solid ${C.goldLight}`,boxShadow:"0 6px 28px rgba(139,105,20,0.18)",margin:"0 auto 18px",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column"}}>
@@ -209,7 +306,7 @@ function LoginScreen({ onLogin }) {
           <div style={{width:60,height:2,background:`linear-gradient(90deg,transparent,${C.gold},transparent)`,margin:"12px auto"}}/>
           <p style={{color:C.textLight,fontSize:13,letterSpacing:2,margin:0}}>QUR'AN TRACKER</p>
         </div>
-        <div style={{background:"#fff",border:`1px solid ${C.border}`,borderRadius:18,padding:34,boxShadow:"0 6px 28px rgba(0,0,0,0.07)"}}>
+        <div style={{background:"#fff",border:"1.5px solid #C8E6C9",borderRadius:20,padding:36,boxShadow:"0 10px 40px rgba(0,0,0,0.10)"}}>
           <div style={{marginBottom:18}}>
             <label style={{color:C.textMid,fontSize:15,display:"block",marginBottom:8,fontWeight:"bold"}}>Login ID</label>
             <input value={login} onChange={e=>setLogin(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleLogin()} style={S.input} placeholder="Enter your login ID" onFocus={e=>e.target.style.borderColor=C.primary} onBlur={e=>e.target.style.borderColor=C.border}/>
@@ -255,7 +352,7 @@ function WeekTable({ weekData, editing, onCellChange, onFeedbackChange }) {
       <div style={{overflowX:"auto"}}>
         <table style={{width:"100%",borderCollapse:"collapse",fontSize:15}}>
           <thead>
-            <tr style={{background:"#eef6ee"}}>
+            <tr style={{background:"#E8F5E9"}}>
               <th style={{padding:"11px 14px",textAlign:"left",color:C.textMid,fontWeight:"bold",fontSize:13,letterSpacing:1,borderBottom:`1px solid ${C.border}`,minWidth:120}}>CATEGORY</th>
               {DAYS.map(d=><th key={d} style={{padding:"11px 14px",textAlign:"left",color:C.primary,fontWeight:"bold",fontSize:13,letterSpacing:1,borderBottom:`1px solid ${C.border}`,minWidth:150}}>{d.toUpperCase()}</th>)}
             </tr>
@@ -375,7 +472,7 @@ function PaymentSection({ student, onSave, isAdmin }) {
               <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                 <button onClick={()=>toggle(m,true)} style={{...S.btnSuccess,padding:"6px 14px",fontSize:14,opacity:paid===true?0.5:1}} disabled={paid===true}>✓ Paid</button>
                 <button onClick={()=>toggle(m,false)} style={{...S.btnDanger,padding:"6px 14px",fontSize:14,opacity:paid===false?0.5:1}} disabled={paid===false}>✗ Not Paid</button>
-                <button onClick={()=>reset(m)} style={{background:"#f0f0f0",border:`1px solid ${C.border}`,borderRadius:8,padding:"6px 12px",fontSize:13,color:C.textMid,cursor:"pointer",fontFamily:"Georgia,serif"}} disabled={paid===null}>↺ Reset</button>
+                <button onClick={()=>reset(m)} style={{background:"#f0f0f0",border:`1px solid ${C.border}`,borderRadius:8,padding:"6px 12px",fontSize:13,color:C.textMid,cursor:"pointer",fontFamily:"'Inter','Segoe UI',sans-serif"}} disabled={paid===null}>↺ Reset</button>
               </div>
             </div>
           );
@@ -389,10 +486,10 @@ function PaymentSection({ student, onSave, isAdmin }) {
 function NotifPanel({ notifs, onClear, onClose }) {
   return (
     <div style={{position:"absolute",top:60,right:0,width:340,background:"#fff",border:`1.5px solid ${C.border}`,borderRadius:14,boxShadow:"0 8px 32px rgba(0,0,0,0.12)",zIndex:1000,overflow:"hidden"}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 18px",borderBottom:`1px solid ${C.border}`,background:"#f8fcf8"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 18px",borderBottom:`1px solid ${C.border}`,background:"#E8F5E9"}}>
         <p style={{color:C.primary,fontSize:15,fontWeight:"bold",margin:0}}>🔔 Notifications</p>
         <div style={{display:"flex",gap:10}}>
-          <button onClick={onClear} style={{background:"none",border:"none",color:C.textMid,cursor:"pointer",fontSize:13,fontFamily:"Georgia,serif"}}>Mark all read</button>
+          <button onClick={onClear} style={{background:"none",border:"none",color:C.textMid,cursor:"pointer",fontSize:13,fontFamily:"'Inter','Segoe UI',sans-serif"}}>Mark all read</button>
           <button onClick={onClose} style={{background:"none",border:"none",color:C.textLight,cursor:"pointer",fontSize:18}}>✕</button>
         </div>
       </div>
@@ -514,7 +611,7 @@ function StudentDetail({ student, onBack, isAdmin, isParent, onSave }) {
           </div>
           <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
             {getWeeks().map((w,i)=>(
-              <button key={i} onClick={()=>setActiveWeek(i)} style={{padding:"9px 20px",borderRadius:22,border:`2px solid ${activeWeek===i?C.primary:C.border}`,background:activeWeek===i?"#e0f0e0":"#fff",color:activeWeek===i?C.primary:C.textMid,fontSize:15,cursor:"pointer",fontFamily:"Georgia,serif",fontWeight:activeWeek===i?"bold":"normal"}}>Week {w.week}</button>
+              <button key={i} onClick={()=>setActiveWeek(i)} style={{padding:"9px 20px",borderRadius:22,border:activeWeek===i?"2px solid #2E7D32":"2px solid #C8E6C9",background:activeWeek===i?"#E8F5E9":"#fff",color:activeWeek===i?"#1B5E20":"#4E6B4E",fontSize:15,cursor:"pointer",fontFamily:"'Inter','Segoe UI',sans-serif",fontWeight:activeWeek===i?"bold":"normal"}}>Week {w.week}</button>
             ))}
           </div>
           <div style={{marginBottom:20}}>
@@ -543,9 +640,9 @@ function StudentDetail({ student, onBack, isAdmin, isParent, onSave }) {
 // ── Student Card ──
 function StudentCard({ student, onSelect, unreadCount=0 }) {
   return (
-    <button onClick={()=>onSelect(student)} style={{background:"#fff",border:`1.5px solid ${C.border}`,borderRadius:16,padding:20,cursor:"pointer",textAlign:"left",fontFamily:"Georgia,serif",display:"flex",alignItems:"center",gap:16,width:"100%",boxShadow:"0 2px 10px rgba(0,0,0,0.05)",position:"relative",transition:"all 0.15s"}}
-      onMouseEnter={e=>{e.currentTarget.style.borderColor=C.primary;e.currentTarget.style.boxShadow=`0 6px 20px rgba(45,106,45,0.14)`;}}
-      onMouseLeave={e=>{e.currentTarget.style.borderColor=C.border;e.currentTarget.style.boxShadow="0 2px 10px rgba(0,0,0,0.05)";}}>
+    <button onClick={()=>onSelect(student)} style={{background:"#fff",border:"1.5px solid #C8E6C9",borderRadius:16,padding:20,cursor:"pointer",textAlign:"left",fontFamily:"'Inter','Segoe UI',sans-serif",display:"flex",alignItems:"center",gap:16,width:"100%",boxShadow:"0 2px 10px rgba(0,0,0,0.05)",position:"relative",transition:"all 0.15s"}}
+      onMouseEnter={e=>{e.currentTarget.style.borderColor="#2E7D32";e.currentTarget.style.boxShadow="0 6px 24px rgba(27,94,32,0.12)";e.currentTarget.style.transform="translateY(-2px)";}}
+      onMouseLeave={e=>{e.currentTarget.style.borderColor="#C8E6C9";e.currentTarget.style.boxShadow="0 2px 10px rgba(0,0,0,0.05)";e.currentTarget.style.transform="translateY(0)";}}>
       {unreadCount>0&&<div style={{position:"absolute",top:12,right:12,background:C.notif,color:"#fff",borderRadius:"50%",width:24,height:24,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:"bold"}}>{unreadCount}</div>}
       <div style={{flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
         <Avatar student={student} size={64}/>
@@ -553,8 +650,8 @@ function StudentCard({ student, onSelect, unreadCount=0 }) {
       <div style={{flex:1}}>
         <p style={{color:student.name?C.text:"#aaa",fontSize:16,margin:"0 0 4px",fontWeight:"bold"}}>{student.name||"Empty Slot"}</p>
         <p style={{color:C.textMid,fontSize:14,margin:"0 0 9px"}}>{student.grade||"—"} · {student.teacher||"—"}</p>
-        <div style={{background:"#e0eee0",borderRadius:5,height:7,overflow:"hidden"}}>
-          <div style={{width:`${student.progress}%`,height:"100%",background:`linear-gradient(90deg,${C.primary},#5aaa5a)`,borderRadius:5}}/>
+        <div style={{background:"#E8F5E9",borderRadius:6,height:7,overflow:"hidden"}}>
+          <div style={{width:`${student.progress}%`,height:"100%",background:"linear-gradient(90deg,#2E7D32,#66BB6A)",borderRadius:6}}/>
         </div>
         <p style={{color:student.progress>0?C.primary:C.textLight,fontSize:13,margin:"5px 0 0"}}>{student.progress>0?`${student.progress}% completed`:"Not started"}</p>
       </div>
@@ -565,7 +662,7 @@ function StudentCard({ student, onSelect, unreadCount=0 }) {
 // ── New Slot ──
 function NewStudentSlot({ id, onSetup }) {
   return (
-    <div style={{background:"#fafcfa",border:`2px dashed ${C.border}`,borderRadius:16,padding:20,textAlign:"center",display:"flex",flexDirection:"column",alignItems:"center",gap:10}}>
+    <div style={{background:"#FAFFFE",border:"2px dashed #A5D6A7",borderRadius:16,padding:20,textAlign:"center",display:"flex",flexDirection:"column",alignItems:"center",gap:10}}>
       <UnknownAvatar size={64}/>
       <p style={{color:C.textLight,fontSize:14,margin:0}}>Future Student #{id}</p>
       <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"center"}}>
@@ -590,7 +687,7 @@ function AdminView({ students, onSelect, onSetupSlot }) {
   const divider = (label) => (
     <div style={{display:"flex",alignItems:"center",gap:10,margin:"22px 0 14px"}}>
       <div style={{height:2,flex:1,background:`linear-gradient(90deg,${C.border},transparent)`}}/>
-      <span style={{color:C.primary,fontSize:13,fontWeight:"bold",letterSpacing:2,background:"#eef6ee",padding:"5px 14px",borderRadius:22,border:`1px solid ${C.border}`}}>{label}</span>
+      <span style={{color:C.primary,fontSize:13,fontWeight:"bold",letterSpacing:2,background:"#E8F5E9",padding:"5px 14px",borderRadius:22,border:`1px solid ${C.border}`}}>{label}</span>
       <div style={{height:2,flex:1,background:`linear-gradient(90deg,transparent,${C.border})`}}/>
     </div>
   );
@@ -624,7 +721,7 @@ function AdminView({ students, onSelect, onSetupSlot }) {
               {FAMILY_GROUPS.map(group=>{
                 const gs=group.ids.map(id=>students.find(s=>s.id===id)).filter(Boolean).sort((a,b)=>a.name.localeCompare(b.name));
                 if(!gs.length) return null;
-                return(<div key={group.label} style={{background:"#f5faf5",border:`1.5px solid ${C.border}`,borderRadius:16,padding:"18px 16px 14px"}}>
+                return(<div key={group.label} style={{background:"#F1F8F1",border:"1.5px solid #C8E6C9",borderRadius:16,padding:"18px 16px 14px"}}>
                   <p style={{color:C.primary,fontSize:15,fontWeight:"bold",margin:"0 0 14px"}}>👨‍👩‍👧‍👦 {group.label.toUpperCase()} · {gs.length} students</p>
                   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:12}}>{gs.map(s=><StudentCard key={s.id} student={s} onSelect={onSelect} unreadCount={getUnread(s)}/>)}</div>
                 </div>);
@@ -632,8 +729,24 @@ function AdminView({ students, onSelect, onSetupSlot }) {
             </div>
           </>)}
           {filter==="all"&&emptySlots.length>0&&(<>
-            {divider(`FUTURE STUDENTS — ${emptySlots.length} SLOTS`)}
+            {divider(`FUTURE INDIVIDUAL STUDENTS — ${emptySlots.length} SLOTS`)}
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:14}}>{emptySlots.map(s=><NewStudentSlot key={s.id} id={s.id} onSetup={onSetupSlot}/>)}</div>
+          </>)}
+          {filter==="all"&&(<>
+            {divider("FUTURE FAMILY GROUPS — 3 SLOTS")}
+            <div style={{display:"flex",flexDirection:"column",gap:14}}>
+              {FUTURE_FAMILY_SLOTS.map((slot,i)=>{
+                const slotStudent = students.find(s=>s.id===slot.ids[0]);
+                return (
+                  <div key={i} style={{background:"#FAFFFE",border:"2px dashed #A5D6A7",borderRadius:16,padding:"18px 16px"}}>
+                    <p style={{color:C.textLight,fontSize:14,fontWeight:"bold",margin:"0 0 10px",letterSpacing:1}}>👨‍👩‍👧‍👦 {slot.label.toUpperCase()} — Admin will assign students</p>
+                    <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                      <button onClick={()=>slotStudent&&onSetupSlot(slot.ids[0],"family")} style={{...S.btnGhost,fontSize:14,padding:"8px 16px"}}>+ Set Up Family</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </>)}
         </>
       )}
@@ -646,6 +759,7 @@ function Dashboard({ account, onLogout }) {
   const [students,setStudents] = useState(STUDENTS);
   const [selected,setSelected] = useState(null);
   const [showNotif,setShowNotif] = useState(false);
+  const [announcements,setAnnouncements] = useState([]);
   const isAdmin = account.role==="admin";
   const isParent = account.role==="parent";
   const visibleStudents = students.filter(s=>isAdmin?true:account.studentIds.includes(s.id));
@@ -661,13 +775,30 @@ function Dashboard({ account, onLogout }) {
       const ref=doc(db,"students",String(s.id));
       return onSnapshot(ref,snap=>{ if(snap.exists()){ const data=snap.data(); setStudents(prev=>prev.map(p=>p.id===s.id?{...p,...data}:p)); setSelected(prev=>prev&&prev.id===s.id?{...prev,...data}:prev); }});
     });
-    return()=>unsubs.forEach(u=>u());
+    // Listen for announcements
+    const announcementsRef = doc(db,"config","announcements");
+    const unsubAnnounce = onSnapshot(announcementsRef, snap=>{
+      if(snap.exists()) setAnnouncements(snap.data().list||[]);
+    });
+    return()=>{ unsubs.forEach(u=>u()); unsubAnnounce(); };
   },[]);
 
   const handleSave = async (updated) => {
     try{ await setDoc(doc(db,"students",String(updated.id)),updated); }catch(e){console.error(e);}
     setStudents(prev=>prev.map(s=>s.id===updated.id?updated:s));
     setSelected(updated);
+  };
+
+  const addAnnouncement = async (announcement) => {
+    const newList = [...announcements, announcement];
+    await setDoc(doc(db,"config","announcements"), { list: newList });
+    setAnnouncements(newList);
+  };
+
+  const deleteAnnouncement = async (idx) => {
+    const newList = announcements.filter((_,i)=>i!==idx);
+    await setDoc(doc(db,"config","announcements"), { list: newList });
+    setAnnouncements(newList);
   };
 
   const clearAllNotifs = async () => {
@@ -690,27 +821,34 @@ function Dashboard({ account, onLogout }) {
   };
 
   return (
-    <div style={{minHeight:"100vh",background:C.bg,fontFamily:"Georgia,serif"}}>
+    <div style={{minHeight:"100vh",background:"#F5F7F5",fontFamily:"'Inter','Segoe UI',sans-serif",color:"#1A1A1A"}}>
       <div style={{maxWidth:960,margin:"0 auto",padding:"20px 18px"}}>
         {/* Header */}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:26,background:"#fff",borderRadius:16,padding:"16px 22px",border:`1.5px solid ${C.border}`,boxShadow:"0 2px 10px rgba(0,0,0,0.05)",flexWrap:"wrap",gap:12}}>
           <div style={{display:"flex",alignItems:"center",gap:16}}>
-            <div style={{width:50,height:50,borderRadius:"50%",background:C.primary,display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,color:C.goldLight,fontWeight:"bold",border:`2px solid ${C.goldLight}`,flexShrink:0}}>DN</div>
+            <div style={{width:50,height:50,borderRadius:"50%",background:"linear-gradient(135deg,#2E7D32,#1B5E20)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,color:"#F9A825",fontWeight:"800",border:"2px solid #F9A825",flexShrink:0,boxShadow:"0 2px 8px rgba(27,94,32,0.3)"}}>DN</div>
             <div>
               <h1 style={{color:C.primary,fontSize:20,margin:0,fontWeight:"bold",letterSpacing:1}}>Darul Noor Education Hub</h1>
               <p style={{color:C.textMid,fontSize:13,margin:"3px 0 0"}}>{isAdmin?"Admin Dashboard":"Parent Portal"} · Qur'an Tracker <span style={{color:C.success,fontSize:12}}>● Live</span></p>
             </div>
           </div>
-          <div style={{display:"flex",alignItems:"center",gap:14}}>
-            {/* Bell notification button */}
+          <div style={{display:"flex",alignItems:"center",gap:14,marginLeft:"auto"}}>
+            <button onClick={onLogout} style={{...S.btnGhost,padding:"9px 18px",fontSize:15}}>Sign Out</button>
+            {/* Announcement badge */}
+            <AnnouncementBadge
+              announcements={announcements}
+              isAdmin={isAdmin}
+              onAdd={addAnnouncement}
+              onDelete={deleteAnnouncement}
+            />
+            {/* Bell notification button — far right */}
             <div style={{position:"relative"}}>
-              <button onClick={()=>setShowNotif(p=>!p)} style={{background:unreadCount>0?"#fff8e8":"#f8f8f8",border:`1.5px solid ${unreadCount>0?"#e0c060":C.border}`,borderRadius:12,padding:"10px 16px",cursor:"pointer",display:"flex",alignItems:"center",gap:8,fontSize:22}}>
+              <button onClick={()=>setShowNotif(p=>!p)} style={{background:unreadCount>0?"#fff8e8":"#f8f8f8",border:`1.5px solid ${unreadCount>0?"#e0c060":C.border}`,borderRadius:12,padding:"10px 16px",cursor:"pointer",display:"flex",alignItems:"center",gap:8,fontSize:22,position:"relative"}}>
                 🔔
-                {unreadCount>0&&<span style={{background:C.notif,color:"#fff",borderRadius:"50%",fontSize:13,padding:"2px 8px",fontWeight:"bold",fontFamily:"Georgia,serif"}}>{unreadCount}</span>}
+                {unreadCount>0&&<span style={{position:"absolute",top:-8,right:-8,background:C.notif,color:"#fff",borderRadius:"50%",minWidth:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:"bold",fontFamily:"'Inter','Segoe UI',sans-serif",padding:"0 4px"}}>{unreadCount}</span>}
               </button>
               {showNotif&&<NotifPanel notifs={[...myNotifs].reverse()} onClear={clearAllNotifs} onClose={()=>setShowNotif(false)}/>}
             </div>
-            <button onClick={onLogout} style={{...S.btnGhost,padding:"9px 18px",fontSize:15}}>Sign Out</button>
           </div>
         </div>
 
