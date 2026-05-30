@@ -479,7 +479,7 @@ function SummarySection({ label, color, borderColor, value, isAdmin, onChange, o
         <p style={{color,fontSize:13,fontWeight:"bold",letterSpacing:1,margin:0}}>{label}</p>
         {isAdmin&&!editing&&(
           <div style={S.row}>
-            <button onClick={()=>setEditing(true)} style={{...S.btnGold,fontSize:11,padding:"4px 10px"}}>✏️</button>
+            <button onClick={()=>setEditingHeader(true)} style={{...S.btnGold,fontSize:11,padding:"4px 10px"}}>✏️</button>
             <button onClick={onDelete} style={{...S.btnDanger,fontSize:11,padding:"4px 8px"}}>🗑</button>
           </div>
         )}
@@ -498,6 +498,39 @@ function SummarySection({ label, color, borderColor, value, isAdmin, onChange, o
     </div>
   );
 }
+
+function EditableMessage({ msg, canEdit, onEdit, onDelete }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(msg.text);
+  const save = () => { onEdit(draft); setEditing(false); };
+  return (
+    <div style={{alignSelf:msg.from==="parent"?"flex-end":"flex-start",maxWidth:"80%"}}>
+      <div style={{background:msg.from==="parent"?"#E8F5E9":"#FFFDE7",border:`1px solid ${msg.from==="parent"?"#C8E6C9":"#F9A825"}`,borderRadius:12,padding:"11px 14px"}}>
+        {editing?(
+          <div>
+            <textarea value={draft} onChange={e=>setDraft(e.target.value)} style={{width:"100%",background:"#fff",border:"1.5px solid #A5D6A7",borderRadius:7,padding:"7px 10px",fontSize:14,outline:"none",fontFamily:"'Inter','Segoe UI',sans-serif",resize:"vertical",minHeight:60,boxSizing:"border-box"}}/>
+            <div style={{display:"flex",gap:6,marginTop:6}}>
+              <button onClick={save} style={{background:"#1B5E20",border:"none",borderRadius:6,padding:"5px 12px",color:"#fff",fontSize:12,cursor:"pointer",fontWeight:"700"}}>💾 Save</button>
+              <button onClick={()=>{setDraft(msg.text);setEditing(false);}} style={{background:"#eee",border:"none",borderRadius:6,padding:"5px 10px",color:"#555",fontSize:12,cursor:"pointer"}}>Cancel</button>
+            </div>
+          </div>
+        ):(
+          <>
+            <p style={{color:"#1A1A1A",fontSize:14,margin:"0 0 5px",lineHeight:1.5}}>{msg.text}{msg.edited&&<span style={{color:"#7A977A",fontSize:11}}> (edited)</span>}</p>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+              <p style={{color:"#7A977A",fontSize:12,margin:0}}>{msg.from==="parent"?"👨‍👩‍👧 Parent":"👩‍🏫 Teacher"} · {msg.time}</p>
+              {canEdit&&<div style={{display:"flex",gap:4}}>
+                <button onClick={()=>setEditing(true)} style={{background:"none",border:"none",color:"#1B5E20",cursor:"pointer",fontSize:13}}>✏️</button>
+                <button onClick={onDelete} style={{background:"none",border:"none",color:"#C62828",cursor:"pointer",fontSize:13}}>🗑️</button>
+              </div>}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 
 function MessageSection({ student, isAdmin, onSave }) {
   const [selYear,setSelYear] = useState(2026);
@@ -733,8 +766,8 @@ function StudentDetail({ student, onBack, isAdmin, isParent, onSave }) {
   const getWeeks = () => local.quranProgress?.[selYear]?.[selMonth]||EMPTY_WEEKS();
   const fieldChange=(f,v)=>setLocal(p=>({...p,[f]:v}));
   const summaryChange=(k,v)=>setLocal(p=>({...p,summary:{...p.summary,[k]:v}}));
-  const save=async()=>{ setSaving(true); await onSave(local); setSaving(false); setEditing(false); };
-  const cancel=()=>{ setLocal(JSON.parse(JSON.stringify(student))); setEditing(false); };
+  const save=async()=>{ setSaving(true); await onSave(local); setSaving(false); setEditingHeader(false); };
+  const cancel=()=>{ setLocal(JSON.parse(JSON.stringify(student))); setEditingHeader(false); };
   const handleSaveSection = async (type, field, value) => {
     const u = JSON.parse(JSON.stringify(local));
     if(!u.quranProgress) u.quranProgress=EMPTY_PROGRESS();
@@ -795,9 +828,9 @@ function StudentDetail({ student, onBack, isAdmin, isParent, onSave }) {
           {editing
             ?<><button onClick={save} style={{...S.btnPrimary,fontSize:16}} disabled={saving}>{saving?"Saving...":"✅ Save"}</button>
                <button onClick={cancel} style={{...S.btnGhost,fontSize:16}}>Cancel</button></>
-            :<button onClick={()=>setEditing(true)} style={{...S.btnGold,fontSize:16}}>✏️ Edit Student</button>
+            :<button onClick={()=>setEditingHeader(true)} style={{...S.btnGold,fontSize:16}}>✏️ Edit Student</button>
           }
-          <button onClick={toggleDisable} style={{...local.disabled?S.btnSuccess:S.btnWarning,fontSize:14,padding:"10px 18px"}}>
+          <button onClick={toggleDisable} style={{...local.disabled?S.btnSuccess:S.btnDanger,fontSize:14,padding:"10px 18px"}}>
             {local.disabled?"✅ Enable":"🚫 Disable"}
           </button>
           <button onClick={deleteStudent} style={{...S.btnDanger,fontSize:14,padding:"10px 18px"}}>🗑️ Delete</button>
@@ -860,7 +893,7 @@ function StudentCard({ student, onSelect, unreadCount=0 }) {
       {unreadCount>0&&<div style={{position:"absolute",top:12,right:12,background:C.notif,color:"#fff",borderRadius:"50%",width:24,height:24,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:"bold"}}>{unreadCount}</div>}
       <div style={{flexShrink:0}}><Avatar student={student} size={64}/></div>
       <div style={{flex:1}}>
-        <p style={{color:student.name?C.text:"#aaa",fontSize:16,margin:"0 0 4px",fontWeight:"bold"}}>{student.name||"Empty Slot"}</p>
+        <p style={{color:student.disabled?"#C62828":student.name?"#1A1A1A":"#aaa",fontSize:16,margin:"0 0 4px",fontWeight:"bold"}}>{student.disabled?"🚫 ":""}{student.name||"Empty Slot"}</p>
         <p style={{color:C.textMid,fontSize:14,margin:"0 0 9px"}}>{student.grade||"—"} · {student.teacher||"—"}</p>
         <div style={{background:"#E8F5E9",borderRadius:6,height:7,overflow:"hidden"}}>
           <div style={{width:`${student.progress}%`,height:"100%",background:"linear-gradient(90deg,#2E7D32,#66BB6A)",borderRadius:6}}/>
@@ -978,12 +1011,152 @@ const ACCOUNTS = [
   { login:"family.d@darulnoor", password:"dfamily123", role:"parent", studentIds:[36,37,38] },
 ];
 
+// ── Editable Field with Save/Edit/Delete ──
+function EditableField({ label, value, onSave, onDelete, multiline=false, placeholder="" }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value||"");
+  const save = () => { onSave(draft); setEditing(false); };
+  const cancel = () => { setDraft(value||""); setEditing(false); };
+  const TA = multiline ? "textarea" : "input";
+  return (
+    <div style={{marginBottom:10}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:5}}>
+        <label style={{color:"#4E6B4E",fontSize:12,fontWeight:"700",letterSpacing:1}}>{label}</label>
+        <div style={{display:"flex",gap:5}}>
+          {!editing&&<button onClick={()=>{setDraft(value||"");setEditing(true);}} style={{background:"#E8F5E9",border:"1px solid #A5D6A7",borderRadius:6,padding:"3px 10px",color:"#1B5E20",fontSize:12,cursor:"pointer",fontWeight:"600"}}>✏️ Edit</button>}
+          {!editing&&onDelete&&value&&<button onClick={onDelete} style={{background:"#FFEBEE",border:"1px solid #FFCDD2",borderRadius:6,padding:"3px 10px",color:"#C62828",fontSize:12,cursor:"pointer"}}>🗑️</button>}
+          {editing&&<button onClick={save} style={{background:"#1B5E20",border:"none",borderRadius:6,padding:"3px 12px",color:"#fff",fontSize:12,cursor:"pointer",fontWeight:"700"}}>💾 Save</button>}
+          {editing&&<button onClick={cancel} style={{background:"#eee",border:"none",borderRadius:6,padding:"3px 10px",color:"#555",fontSize:12,cursor:"pointer"}}>Cancel</button>}
+        </div>
+      </div>
+      {editing
+        ? <TA value={draft} onChange={e=>setDraft(e.target.value)} placeholder={placeholder}
+            style={{width:"100%",background:"#FAFFFE",border:"1.5px solid #A5D6A7",borderRadius:8,padding:"9px 12px",color:"#1A1A1A",fontSize:14,outline:"none",fontFamily:"'Inter','Segoe UI',sans-serif",boxSizing:"border-box",resize:multiline?"vertical":undefined,minHeight:multiline?70:undefined}}/>
+        : <p style={{color:value?"#1A1A1A":"#AAC0AA",fontSize:14,margin:0,lineHeight:1.6,fontStyle:value?"normal":"italic",background:"#F8FCF8",borderRadius:8,padding:"9px 12px",border:"1px solid #E8F5E9"}}>{value||placeholder||"Not filled yet"}</p>
+      }
+    </div>
+  );
+}
+
+// ── Editable Day Cell ──
+function DayCell({ value, onSave, onDelete }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value||"");
+  const save = () => { onSave(draft); setEditing(false); };
+  return editing ? (
+    <div style={{display:"flex",gap:4,alignItems:"center"}}>
+      <input value={draft} onChange={e=>setDraft(e.target.value)} autoFocus
+        style={{width:"100%",background:"#FAFFFE",border:"1.5px solid #A5D6A7",borderRadius:6,padding:"5px 8px",color:"#1A1A1A",fontSize:13,outline:"none",fontFamily:"'Inter','Segoe UI',sans-serif",boxSizing:"border-box"}}/>
+      <button onClick={save} style={{background:"#1B5E20",border:"none",borderRadius:5,padding:"5px 8px",color:"#fff",fontSize:11,cursor:"pointer",whiteSpace:"nowrap"}}>💾</button>
+      <button onClick={()=>{setDraft(value||"");setEditing(false);}} style={{background:"#eee",border:"none",borderRadius:5,padding:"5px 7px",color:"#555",fontSize:11,cursor:"pointer"}}>✕</button>
+    </div>
+  ) : (
+    <div style={{display:"flex",alignItems:"center",gap:4,group:true}}>
+      <span style={{color:value?"#1A1A1A":"#AAC0AA",fontSize:14,flex:1}}>{value||"—"}</span>
+      <div style={{display:"flex",gap:2,flexShrink:0}}>
+        <button onClick={()=>{setDraft(value||"");setEditing(true);}} style={{background:"#E8F5E9",border:"1px solid #A5D6A7",borderRadius:4,padding:"2px 6px",color:"#1B5E20",fontSize:11,cursor:"pointer"}}>✏️</button>
+        {value&&<button onClick={onDelete} style={{background:"#FFEBEE",border:"1px solid #FFCDD2",borderRadius:4,padding:"2px 6px",color:"#C62828",fontSize:11,cursor:"pointer"}}>🗑️</button>}
+      </div>
+    </div>
+  );
+}
+
+// ── Manage Logins Panel ──
+function ManageLogins({ accounts, setAccounts, students }) {
+  const [editIdx, setEditIdx] = useState(null);
+  const [editLogin, setEditLogin] = useState("");
+  const [editPass, setEditPass] = useState("");
+  const [newLogin, setNewLogin] = useState("");
+  const [newPass, setNewPass] = useState("");
+  const [newIds, setNewIds] = useState("");
+  const [error, setError] = useState("");
+  const [msg, setMsg] = useState("");
+
+  const parentAccounts = accounts.filter(a=>a.role==="parent");
+
+  const startEdit = (i) => {
+    const acc = parentAccounts[i];
+    setEditIdx(i); setEditLogin(acc.login); setEditPass(acc.password); setError(""); setMsg("");
+  };
+  const saveEdit = () => {
+    if(!editLogin.trim()||!editPass.trim()){setError("Login and password required.");return;}
+    const updated = accounts.map(a=> a===parentAccounts[editIdx]?{...a,login:editLogin.trim().toLowerCase(),password:editPass.trim()}:a);
+    setAccounts(updated); setEditIdx(null); setMsg("✅ Login updated.");
+  };
+  const addNew = () => {
+    if(!newLogin.trim()||!newPass.trim()){setError("Login and password required.");return;}
+    if(accounts.find(a=>a.login===newLogin.trim().toLowerCase())){setError("Login already exists.");return;}
+    const ids = newIds.split(",").map(s=>parseInt(s.trim())).filter(n=>!isNaN(n));
+    if(!ids.length){setError("Enter at least one student ID.");return;}
+    setAccounts([...accounts,{login:newLogin.trim().toLowerCase(),password:newPass.trim(),role:"parent",studentIds:ids}]);
+    setNewLogin(""); setNewPass(""); setNewIds(""); setMsg("✅ Login created."); setError("");
+  };
+  const toggleDisable = (i) => {
+    const acc = parentAccounts[i];
+    const updated = accounts.map(a=>a===acc?{...a,disabled:!a.disabled}:a);
+    setAccounts(updated);
+  };
+
+  const inp = {background:"#FAFFFE",border:"1.5px solid #C8E6C9",borderRadius:8,padding:"8px 12px",color:"#1A1A1A",fontSize:14,outline:"none",fontFamily:"'Inter','Segoe UI',sans-serif"};
+
+  return (
+    <div>
+      <h3 style={{color:"#1B5E20",fontSize:17,fontWeight:"700",margin:"0 0 16px"}}>🔐 Manage Parent Logins</h3>
+      {msg&&<p style={{color:"#2E7D32",fontSize:13,marginBottom:10,background:"#E8F5E9",padding:"8px 12px",borderRadius:8}}>{msg}</p>}
+      {error&&<p style={{color:"#C62828",fontSize:13,marginBottom:10,background:"#FFEBEE",padding:"8px 12px",borderRadius:8}}>⚠ {error}</p>}
+
+      {/* Add new login */}
+      <div style={{background:"#F1F8F1",border:"1.5px solid #C8E6C9",borderRadius:12,padding:16,marginBottom:18}}>
+        <p style={{color:"#1B5E20",fontSize:13,fontWeight:"700",margin:"0 0 10px"}}>➕ CREATE NEW LOGIN</p>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:8}}>
+          <input value={newLogin} onChange={e=>setNewLogin(e.target.value)} placeholder="Login (e.g. name@darulnoor)" style={{...inp,flex:2,minWidth:150}}/>
+          <input value={newPass} onChange={e=>setNewPass(e.target.value)} placeholder="Password" style={{...inp,flex:1,minWidth:100}}/>
+          <input value={newIds} onChange={e=>setNewIds(e.target.value)} placeholder="Student IDs (e.g. 29,30)" style={{...inp,flex:1,minWidth:120}}/>
+        </div>
+        <p style={{color:"#4E6B4E",fontSize:12,margin:"0 0 8px"}}>Student IDs: {students.filter(s=>s.name).map(s=>`${s.id}=${s.name.split(" ")[0]}`).join(", ")}</p>
+        <button onClick={addNew} style={{background:"linear-gradient(135deg,#2E7D32,#1B5E20)",border:"none",borderRadius:8,padding:"9px 18px",color:"#fff",fontSize:14,fontWeight:"700",cursor:"pointer"}}>➕ Create Login</button>
+      </div>
+
+      {/* Existing logins */}
+      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+        {parentAccounts.map((acc,i)=>(
+          <div key={i} style={{background:acc.disabled?"#FFF8F8":"#fff",border:`1.5px solid ${acc.disabled?"#FFCDD2":"#C8E6C9"}`,borderRadius:10,padding:"12px 14px"}}>
+            {editIdx===i?(
+              <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+                <input value={editLogin} onChange={e=>setEditLogin(e.target.value)} style={{...inp,flex:2,minWidth:150}}/>
+                <input value={editPass} onChange={e=>setEditPass(e.target.value)} style={{...inp,flex:1,minWidth:100}}/>
+                <button onClick={saveEdit} style={{background:"#1B5E20",border:"none",borderRadius:7,padding:"7px 14px",color:"#fff",fontSize:13,fontWeight:"700",cursor:"pointer"}}>💾 Save</button>
+                <button onClick={()=>setEditIdx(null)} style={{background:"#eee",border:"none",borderRadius:7,padding:"7px 12px",color:"#555",fontSize:13,cursor:"pointer"}}>Cancel</button>
+              </div>
+            ):(
+              <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                <div style={{flex:1}}>
+                  <p style={{color:acc.disabled?"#C62828":"#1A1A1A",fontSize:14,fontWeight:"600",margin:"0 0 2px"}}>{acc.login} {acc.disabled&&"🚫"}</p>
+                  <p style={{color:"#7A977A",fontSize:12,margin:0}}>Password: {acc.password} · Students: {acc.studentIds.join(", ")}</p>
+                </div>
+                <div style={{display:"flex",gap:6}}>
+                  <button onClick={()=>startEdit(i)} style={{background:"#E8F5E9",border:"1px solid #A5D6A7",borderRadius:7,padding:"5px 12px",color:"#1B5E20",fontSize:12,cursor:"pointer",fontWeight:"600"}}>✏️</button>
+                  <button onClick={()=>toggleDisable(i)} style={{background:acc.disabled?"#E8F5E9":"#FFEBEE",border:`1px solid ${acc.disabled?"#A5D6A7":"#FFCDD2"}`,borderRadius:7,padding:"5px 12px",color:acc.disabled?"#1B5E20":"#C62828",fontSize:12,cursor:"pointer"}}>
+                    {acc.disabled?"✅ Enable":"🚫 Disable"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Dashboard({ account, onLogout }) {
   const [students,setStudents] = useState(STUDENTS);
+  const [accounts,setAccounts] = useState(ACCOUNTS);
   const [selected,setSelected] = useState(null);
   const [showNotif,setShowNotif] = useState(false);
   const [showAnnounce,setShowAnnounce] = useState(false);
   const [announcements,setAnnouncements] = useState([]);
+  const [dashTab,setDashTab] = useState("students");
   const isAdmin = account.role==="admin";
   const isParent = account.role==="parent";
   const visibleStudents = students.filter(s=>isAdmin?true:account.studentIds.includes(s.id));
@@ -1126,15 +1299,32 @@ function Dashboard({ account, onLogout }) {
           <StudentDetail student={selected} onBack={()=>setSelected(null)} isAdmin={isAdmin} isParent={isParent} onSave={handleSave}/>
         ):(
           <>
-            <p style={{color:"#4E6B4E",fontSize:15,marginBottom:18}}>
-              {isAdmin?`${visibleStudents.filter(s=>s.name).length} students`:visibleStudents.length>1?`${visibleStudents.length} children`:"Your child's progress"}
-            </p>
-            {isAdmin
-              ?<AdminView students={visibleStudents} onSelect={setSelected} onSetupSlot={(id)=>setSelected(students.find(s=>s.id===id))}/>
-              :<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(270px,1fr))",gap:16}}>
-                {visibleStudents.map(s=><StudentCard key={s.id} student={s} onSelect={setSelected} unreadCount={(s.parentNotifs||[]).filter(n=>!n.read).length}/>)}
+            {isAdmin&&(
+              <div style={{display:"flex",gap:8,marginBottom:18,flexWrap:"wrap"}}>
+                <button style={{padding:"10px 22px",borderRadius:24,border:dashTab==="students"?"2px solid #2E7D32":"2px solid #C8E6C9",background:dashTab==="students"?"#E8F5E9":"#fff",color:dashTab==="students"?"#1B5E20":"#4E6B4E",fontSize:14,cursor:"pointer",fontFamily:"'Inter','Segoe UI',sans-serif",fontWeight:dashTab==="students"?"700":"400"}}
+                  onClick={()=>setDashTab("students")}>👥 Students</button>
+                <button style={{padding:"10px 22px",borderRadius:24,border:dashTab==="logins"?"2px solid #2E7D32":"2px solid #C8E6C9",background:dashTab==="logins"?"#E8F5E9":"#fff",color:dashTab==="logins"?"#1B5E20":"#4E6B4E",fontSize:14,cursor:"pointer",fontFamily:"'Inter','Segoe UI',sans-serif",fontWeight:dashTab==="logins"?"700":"400"}}
+                  onClick={()=>setDashTab("logins")}>🔐 Manage Logins</button>
               </div>
-            }
+            )}
+            {dashTab==="students"&&(
+              <>
+                <p style={{color:"#4E6B4E",fontSize:15,marginBottom:18}}>
+                  {isAdmin?`${visibleStudents.filter(s=>s.name&&!s.disabled).length} active students`:visibleStudents.length>1?`${visibleStudents.length} children`:"Your child's progress"}
+                </p>
+                {isAdmin
+                  ?<AdminView students={visibleStudents} accounts={accounts} onSelect={setSelected} onSetupSlot={(id)=>setSelected(students.find(s=>s.id===id))}/>
+                  :<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(270px,1fr))",gap:16}}>
+                    {visibleStudents.filter(s=>!s.disabled).map(s=><StudentCard key={s.id} student={s} onSelect={setSelected} unreadCount={(s.parentNotifs||[]).filter(n=>!n.read).length}/>)}
+                  </div>
+                }
+              </>
+            )}
+            {isAdmin&&dashTab==="logins"&&(
+              <div style={{background:"#fff",border:"1px solid #C8E6C9",borderRadius:16,padding:24,boxShadow:"0 2px 10px rgba(0,0,0,0.05)"}}>
+                <ManageLogins accounts={accounts} setAccounts={setAccounts} students={students}/>
+              </div>
+            )}
           </>
         )}
       </div>
