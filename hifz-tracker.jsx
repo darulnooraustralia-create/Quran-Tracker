@@ -479,7 +479,7 @@ function SummarySection({ label, color, borderColor, value, isAdmin, onChange, o
         <p style={{color,fontSize:13,fontWeight:"bold",letterSpacing:1,margin:0}}>{label}</p>
         {isAdmin&&!editing&&(
           <div style={S.row}>
-            <button onClick={()=>setEditingHeader(true)} style={{...S.btnGold,fontSize:11,padding:"4px 10px"}}>✏️</button>
+            <button onClick={()=>setEditing(true)} style={{...S.btnGold,fontSize:11,padding:"4px 10px"}}>✏️</button>
             <button onClick={onDelete} style={{...S.btnDanger,fontSize:11,padding:"4px 8px"}}>🗑</button>
           </div>
         )}
@@ -766,8 +766,8 @@ function StudentDetail({ student, onBack, isAdmin, isParent, onSave }) {
   const getWeeks = () => local.quranProgress?.[selYear]?.[selMonth]||EMPTY_WEEKS();
   const fieldChange=(f,v)=>setLocal(p=>({...p,[f]:v}));
   const summaryChange=(k,v)=>setLocal(p=>({...p,summary:{...p.summary,[k]:v}}));
-  const save=async()=>{ setSaving(true); await onSave(local); setSaving(false); setEditingHeader(false); };
-  const cancel=()=>{ setLocal(JSON.parse(JSON.stringify(student))); setEditingHeader(false); };
+  const save=async()=>{ setSaving(true); await onSave(local); setSaving(false); setEditing(false); };
+  const cancel=()=>{ setLocal(JSON.parse(JSON.stringify(student))); setEditing(false); };
   const handleSaveSection = async (type, field, value) => {
     const u = JSON.parse(JSON.stringify(local));
     if(!u.quranProgress) u.quranProgress=EMPTY_PROGRESS();
@@ -828,7 +828,7 @@ function StudentDetail({ student, onBack, isAdmin, isParent, onSave }) {
           {editing
             ?<><button onClick={save} style={{...S.btnPrimary,fontSize:16}} disabled={saving}>{saving?"Saving...":"✅ Save"}</button>
                <button onClick={cancel} style={{...S.btnGhost,fontSize:16}}>Cancel</button></>
-            :<button onClick={()=>setEditingHeader(true)} style={{...S.btnGold,fontSize:16}}>✏️ Edit Student</button>
+            :<button onClick={()=>setEditing(true)} style={{...S.btnGold,fontSize:16}}>✏️ Edit Student</button>
           }
           <button onClick={toggleDisable} style={{...local.disabled?S.btnSuccess:S.btnDanger,fontSize:14,padding:"10px 18px"}}>
             {local.disabled?"✅ Enable":"🚫 Disable"}
@@ -1359,5 +1359,5 @@ function AnnouncementCompose({ onPost }) {
 
 export default function App() {
   const [account,setAccount] = useState(null);
-  return account?<Dashboard account={account} onLogout={()=>setAccount(null)}/>:<LoginScreen onLogin={setAccount}/>;
+  return account?<Dashboard account={account} onLogout={()=>setAccount(null)}/>:<LoginScreen onLogin={setAccount} accounts={ACCOUNTS}/>;
 }
