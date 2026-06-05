@@ -193,7 +193,7 @@ function AnnouncementBadge({ announcements, isAdmin, onAdd, onDelete, onEdit }) 
         📢{unread>0&&<span style={{position:"absolute",top:-8,right:-8,background:"#e67e22",color:"#fff",borderRadius:"50%",minWidth:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:"bold",fontFamily:FONT,padding:"0 4px"}}>{unread}</span>}
       </button>
       {open&&(
-        <div style={{position:"fixed",top:80,right:12,width:"min(370px, calc(100vw - 24px))",background:"#fff",border:`1.5px solid ${C.border}`,borderRadius:16,boxShadow:"0 8px 32px rgba(0,0,0,0.12)",zIndex:1000,overflow:"hidden"}}>
+        <div style={{position:"fixed",top:80,right:0,left:"auto",width:"min(370px, 100vw)",background:"#fff",border:`1.5px solid ${C.border}`,borderLeft:`1.5px solid ${C.border}`,borderRadius:"16px 0 0 16px",boxShadow:"0 8px 32px rgba(0,0,0,0.12)",zIndex:1000,overflow:"hidden"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 18px",borderBottom:`1px solid ${C.border}`,background:"#FFF3E0"}}>
             <p style={{color:C.warning,fontSize:16,fontWeight:"bold",margin:0}}>📢 Announcements</p>
             <button onClick={()=>setOpen(false)} style={{background:"none",border:"none",color:C.textLight,cursor:"pointer",fontSize:20}}>✕</button>
@@ -642,7 +642,7 @@ function PaymentSection({ student, onSave, isAdmin }) {
 
 function NotifPanel({ notifs, onClear, onClose }) {
   return (
-    <div style={{position:"fixed",top:80,right:12,width:"min(340px, calc(100vw - 24px))",background:"#fff",border:`1.5px solid ${C.border}`,borderRadius:14,boxShadow:"0 8px 32px rgba(0,0,0,0.12)",zIndex:1000,overflow:"hidden"}}>
+    <div style={{position:"fixed",top:80,right:0,left:"auto",width:"min(340px, 100vw)",background:"#fff",border:`1.5px solid ${C.border}`,borderRadius:"14px 0 0 14px",boxShadow:"0 8px 32px rgba(0,0,0,0.12)",zIndex:1000,overflow:"hidden"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 18px",borderBottom:`1px solid ${C.border}`,background:"#E8F5E9"}}>
         <p style={{color:C.primary,fontSize:15,fontWeight:"bold",margin:0}}>🔔 Notifications</p>
         <div style={S.row}>
