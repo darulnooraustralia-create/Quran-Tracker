@@ -1164,7 +1164,7 @@ function Dashboard({ account, onLogout }) {
   const parentNotifs = isParent ? visibleStudents.flatMap(s=>(s.parentNotifs||[])) : [];
   const myNotifs = isAdmin ? adminNotifs : parentNotifs;
   const unreadCount = myNotifs.filter(n=>!n.read).length;
-  const unreadAnnounce = announcements.filter(a=>!a.read).length;
+  const unreadAnnounce = announcements.filter(a=>!(a.readBy||[]).includes(account.login)).length;
 
   useEffect(()=>{
     const unsubs=STUDENTS.map(s=>{
@@ -1189,6 +1189,15 @@ function Dashboard({ account, onLogout }) {
 
   const deleteAnnouncement = async (idx) => {
     const newList=announcements.filter((_,i)=>i!==idx);
+    await setDoc(doc(db,"config","announcements"),{list:newList});
+    setAnnouncements(newList);
+  };
+
+  const markAnnouncementRead = async (idx) => {
+    const ann = announcements[idx];
+    if((ann.readBy||[]).includes(account.login)) return;
+    const updated = {...ann, readBy:[...(ann.readBy||[]),account.login]};
+    const newList = announcements.map((a,i)=>i===idx?updated:a);
     await setDoc(doc(db,"config","announcements"),{list:newList});
     setAnnouncements(newList);
   };
@@ -1228,14 +1237,14 @@ function Dashboard({ account, onLogout }) {
             <button onClick={onLogout} style={{background:"transparent",border:"2px solid #2E7D32",borderRadius:10,padding:"9px 18px",color:"#2E7D32",fontSize:15,cursor:"pointer",fontFamily:"'Inter','Segoe UI',sans-serif",fontWeight:"600"}}>Sign Out</button>
             {/* Announcement badge */}
             <div style={{position:"relative"}}>
-              <button onClick={()=>{setShowAnnounce(p=>!p);setShowNotif(false);}} style={{background:unreadAnnounce>0?"#FFF3E0":"#f8f8f8",border:`1.5px solid ${unreadAnnounce>0?"#E65100":"#C8E6C9"}`,borderRadius:12,padding:"10px 14px",cursor:"pointer",fontSize:20,position:"relative"}}>
+              <button onClick={async()=>{const opening=!showAnnounce;setShowAnnounce(p=>!p);setShowNotif(false);if(opening&&isParent){for(let i=0;i<announcements.length;i++){await markAnnouncementRead(i);}}}} style={{background:unreadAnnounce>0?"#FFF3E0":"#f8f8f8",border:`1.5px solid ${unreadAnnounce>0?"#E65100":"#C8E6C9"}`,borderRadius:12,padding:"10px 14px",cursor:"pointer",fontSize:20,position:"relative"}}>
                 📢
                 {unreadAnnounce>0&&<span style={{position:"absolute",top:-8,right:-8,background:"#E65100",color:"#fff",borderRadius:"50%",minWidth:20,height:20,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:"bold",padding:"0 4px"}}>
                   {unreadAnnounce}
                 </span>}
               </button>
               {showAnnounce&&(
-                <div style={{position:"absolute",top:56,right:0,width:350,background:"#fff",border:"1.5px solid #C8E6C9",borderRadius:16,boxShadow:"0 8px 32px rgba(0,0,0,0.12)",zIndex:1000,overflow:"hidden"}}>
+                <div style={{position:"fixed",top:80,right:0,width:"min(360px,100vw)",background:"#fff",border:"1.5px solid #C8E6C9",borderRadius:"16px 0 0 16px",boxShadow:"-4px 8px 32px rgba(0,0,0,0.13)",zIndex:2000,overflow:"hidden"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 18px",borderBottom:"1px solid #C8E6C9",background:"#FFF3E0"}}>
                     <p style={{color:"#E65100",fontSize:16,fontWeight:"700",margin:0}}>📢 Announcements</p>
                     <button onClick={()=>setShowAnnounce(false)} style={{background:"none",border:"none",color:"#7A977A",cursor:"pointer",fontSize:20}}>✕</button>
@@ -1243,21 +1252,27 @@ function Dashboard({ account, onLogout }) {
                   {isAdmin&&(
                     <AnnouncementCompose onPost={addAnnouncement}/>
                   )}
-                  <div style={{maxHeight:300,overflowY:"auto"}}>
+                  <div style={{maxHeight:340,overflowY:"auto"}}>
                     {announcements.length===0
                       ?<p style={{color:"#7A977A",fontSize:14,margin:"20px",textAlign:"center",fontStyle:"italic"}}>No announcements yet.</p>
-                      :[...announcements].reverse().map((a,i)=>(
-                        <div key={i} style={{padding:"12px 18px",borderBottom:"1px solid #C8E6C9",background:a.read?"#fff":"#FFFDE7"}}>
+                      :[...announcements].reverse().map((a,i)=>{
+                        const realIdx=announcements.length-1-i;
+                        const isRead=(a.readBy||[]).includes(account.login);
+                        return(
+                        <div key={i} style={{padding:"12px 18px",borderBottom:"1px solid #C8E6C9",background:isRead?"#fff":"#FFFDE7"}}>
                           <div style={{display:"flex",justifyContent:"space-between",gap:8}}>
                             <div style={{flex:1}}>
+                              {!isRead&&<span style={{display:"inline-block",background:"#E65100",color:"#fff",fontSize:10,fontWeight:"bold",borderRadius:8,padding:"1px 7px",marginBottom:4}}>NEW</span>}
                               <p style={{color:"#1A1A1A",fontSize:15,fontWeight:"700",margin:"0 0 4px"}}>{a.title}</p>
                               <p style={{color:"#2D3A2D",fontSize:14,margin:"0 0 5px",lineHeight:1.5}}>{a.text}</p>
                               <p style={{color:"#7A977A",fontSize:12,margin:0}}>📅 {a.time}</p>
+                              {!isAdmin&&!isRead&&<button onClick={()=>markAnnouncementRead(realIdx)} style={{marginTop:6,background:"none",border:"1px solid #A5D6A7",borderRadius:6,color:"#2E7D32",fontSize:12,cursor:"pointer",padding:"3px 10px",fontFamily:"'Inter','Segoe UI',sans-serif"}}>✓ Mark as read</button>}
                             </div>
-                            {isAdmin&&<button onClick={()=>deleteAnnouncement(announcements.length-1-i)} style={{background:"none",border:"none",color:"#C62828",cursor:"pointer",fontSize:16,padding:"2px 6px"}}>🗑️</button>}
+                            {isAdmin&&<button onClick={()=>deleteAnnouncement(realIdx)} style={{background:"none",border:"none",color:"#C62828",cursor:"pointer",fontSize:16,padding:"2px 6px"}}>🗑️</button>}
                           </div>
                         </div>
-                      ))
+                        );
+                      })
                     }
                   </div>
                 </div>
@@ -1270,7 +1285,7 @@ function Dashboard({ account, onLogout }) {
                 {unreadCount>0&&<span style={{position:"absolute",top:-8,right:-8,background:"#D32F2F",color:"#fff",borderRadius:"50%",minWidth:20,height:20,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:"bold",padding:"0 4px"}}>{unreadCount}</span>}
               </button>
               {showNotif&&(
-                <div style={{position:"absolute",top:56,right:0,width:340,background:"#fff",border:"1.5px solid #C8E6C9",borderRadius:16,boxShadow:"0 8px 32px rgba(0,0,0,0.12)",zIndex:1000,overflow:"hidden"}}>
+                <div style={{position:"fixed",top:80,right:0,width:"min(340px,100vw)",background:"#fff",border:"1.5px solid #C8E6C9",borderRadius:"14px 0 0 14px",boxShadow:"-4px 8px 32px rgba(0,0,0,0.13)",zIndex:2000,overflow:"hidden"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 18px",borderBottom:"1px solid #C8E6C9",background:"#E8F5E9"}}>
                     <p style={{color:"#1B5E20",fontSize:15,fontWeight:"700",margin:0}}>🔔 Notifications</p>
                     <div style={{display:"flex",gap:10}}>
