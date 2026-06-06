@@ -16,7 +16,6 @@ const db = getFirestore(firebaseApp);
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const DAYS = ["Monday","Tuesday","Wednesday","Thursday"];
 const YEARS = [2026,2027,2028];
-const NS = "http://www.w3.org/2000/svg";
 
 const EMPTY_WEEKS = () => [1,2,3,4].map(w => ({
   week: w, days: DAYS.map(d => ({ day: d, sabq: "", manzil: "", notes: "" })), teacherFeedback: ""
@@ -96,7 +95,7 @@ const FAMILY_GROUPS = [
 
 function MaleAvatar({ size=64 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 200 260" xmlns={NS}>
+    <svg width={size} height={size} viewBox="0 0 200 260">
       <rect width="200" height="260" fill="#e8ebe8" rx="8"/>
       <path d="M55 90 Q55 30 100 28 Q145 30 145 90 Z" fill="#4a4a4a"/>
       <rect x="48" y="85" width="104" height="22" rx="3" fill="#3a3a3a"/>
@@ -110,7 +109,7 @@ function MaleAvatar({ size=64 }) {
 }
 function FemaleAvatar({ size=64 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 200 260" xmlns={NS}>
+    <svg width={size} height={size} viewBox="0 0 200 260">
       <rect width="200" height="260" fill="#eaeae6" rx="8"/>
       <path d="M18 260 Q14 190 22 160 Q28 138 36 122 Q40 90 100 72 Q160 90 164 122 Q172 138 178 160 Q186 190 182 260Z" fill="#5a5a5a"/>
       <path d="M36 120 Q36 68 100 65 Q164 68 164 120 Q150 100 100 97 Q50 100 36 120Z" fill="#4a4a4a"/>
@@ -121,7 +120,7 @@ function FemaleAvatar({ size=64 }) {
 }
 function Avatar({ student, size=64 }) {
   if (!student.name) return (
-    <svg width={size} height={size} viewBox="0 0 100 100" xmlns={NS}>
+    <svg width={size} height={size} viewBox="0 0 100 100">
       <circle cx="50" cy="50" r="50" fill="#f0f4f0"/>
       <text x="50" y="60" textAnchor="middle" fill="#90a890" fontSize="36" fontFamily="Georgia,serif">?</text>
     </svg>
@@ -129,7 +128,7 @@ function Avatar({ student, size=64 }) {
   if (student.gender==="male") return <MaleAvatar size={size}/>;
   if (student.gender==="female") return <FemaleAvatar size={size}/>;
   return (
-    <svg width={size} height={size} viewBox="0 0 100 100" xmlns={NS}>
+    <svg width={size} height={size} viewBox="0 0 100 100">
       <circle cx="50" cy="50" r="50" fill="#e0eee0"/>
       <text x="50" y="66" textAnchor="middle" fill="#2d6a2d" fontSize="42" fontWeight="bold" fontFamily="Georgia,serif">{student.name.charAt(0).toUpperCase()}</text>
     </svg>
@@ -249,67 +248,8 @@ function AnnouncementBadge({ announcements, isAdmin, onAdd, onDelete, onEdit }) 
   );
 }
 
-function AnnouncementBoard({ announcements, isAdmin, onMarkAllRead, onDelete, onEdit }) {
-  const [collapsed, setCollapsed] = useState(false);
-  const [editIdx, setEditIdx] = useState(null);
-  const [editTitle, setEditTitle] = useState(""); const [editText, setEditText] = useState("");
-  const unread = announcements.filter(a=>!a.read).length;
-  const al = unread > 0;
-  if (!announcements.length && !isAdmin) return null;
-  const saveEdit = async () => {
-    await onEdit(editIdx, { ...announcements[editIdx], title: editTitle.trim(), text: editText.trim() });
-    setEditIdx(null);
-  };
-  return (
-    <div style={{marginBottom:22,borderRadius:16,overflow:"hidden",border:`2px solid ${al?"#EF9A9A":"#A5D6A7"}`,boxShadow:al?"0 4px 20px rgba(183,28,28,0.12)":"0 2px 10px rgba(27,94,32,0.08)"}}>
-      <div style={{background:al?"linear-gradient(135deg,#B71C1C,#D32F2F)":"linear-gradient(135deg,#2E7D32,#1B5E20)",padding:"13px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer"}} onClick={()=>setCollapsed(p=>!p)}>
-        <div style={S.row}>
-          <span style={{fontSize:22}}>📋</span>
-          <span style={{color:"#fff",fontSize:16,fontWeight:"800",letterSpacing:1}}>NOTICE BOARD</span>
-          {al?<span style={{background:"#fff",color:"#B71C1C",fontSize:13,fontWeight:"bold",borderRadius:20,padding:"2px 12px"}}>{unread} NEW</span>
-             :<span style={{color:"rgba(255,255,255,0.75)",fontSize:13}}>All up to date</span>}
-        </div>
-        <span style={{color:"#fff",fontSize:18,transform:collapsed?"rotate(-90deg)":"rotate(0deg)",transition:"transform 0.2s"}}>▾</span>
-      </div>
-      {!collapsed&&(
-        <div style={{background:al?"#FFF8F8":"#F8FFF8",padding:"16px 18px",display:"flex",flexDirection:"column",gap:12}}>
-          {!announcements.length&&<p style={{color:C.textLight,fontSize:14,textAlign:"center",fontStyle:"italic",margin:"8px 0"}}>No announcements yet.</p>}
-          {[...announcements].reverse().map((a,i)=>{
-            const realIdx=announcements.length-1-i;
-            return(
-              <div key={i} style={{background:a.read?"#fff":al?"#fff5f5":"#f0fff0",border:`2px solid ${a.read?C.border:al?"#EF9A9A":"#81C784"}`,borderLeft:`6px solid ${a.read?C.borderMid:al?"#D32F2F":"#2E7D32"}`,borderRadius:12,padding:"14px 16px",position:"relative"}}>
-                {!a.read&&editIdx!==realIdx&&<span style={{position:"absolute",top:10,right:12,background:al?"#D32F2F":C.primary,color:"#fff",fontSize:11,fontWeight:"bold",borderRadius:10,padding:"2px 9px"}}>NEW</span>}
-                {editIdx===realIdx?(
-                  <div style={S.flexCol}>
-                    <input value={editTitle} onChange={e=>setEditTitle(e.target.value)} style={{...S.inputSm,width:"100%",boxSizing:"border-box"}}/>
-                    <textarea value={editText} onChange={e=>setEditText(e.target.value)} style={{...S.inputSm,width:"100%",boxSizing:"border-box",resize:"vertical",minHeight:70}}/>
-                    <div style={S.row}>
-                      <button onClick={saveEdit} style={{...S.btnPrimary,fontSize:13,padding:"7px 16px"}}>💾 Save</button>
-                      <button onClick={()=>setEditIdx(null)} style={{...S.btnGhost,fontSize:13,padding:"7px 16px"}}>Cancel</button>
-                    </div>
-                  </div>
-                ):(
-                  <>
-                    <p style={{color:a.read?C.textMid:"#B71C1C",fontSize:16,fontWeight:"800",margin:"0 0 6px",paddingRight:50}}>{a.title}</p>
-                    <p style={{color:a.read?C.textBody:C.text,fontSize:15,margin:"0 0 8px",lineHeight:1.6}}>{a.text}</p>
-                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:6}}>
-                      <p style={{color:C.textLight,fontSize:12,margin:0}}>📅 {a.time}</p>
-                      {isAdmin&&<div style={S.row}>
-                        <button onClick={()=>{setEditIdx(realIdx);setEditTitle(a.title);setEditText(a.text);}} style={{background:"none",border:`1px solid ${C.gold}`,borderRadius:8,padding:"4px 12px",color:C.gold,cursor:"pointer",fontSize:13,fontFamily:FONT}}>✏️ Edit</button>
-                        <button onClick={()=>onDelete(realIdx)} style={{background:"none",border:`1px solid ${C.danger}`,borderRadius:8,padding:"4px 12px",color:C.danger,cursor:"pointer",fontSize:13,fontFamily:FONT}}>🗑 Delete</button>
-                      </div>}
-                    </div>
-                  </>
-                )}
-              </div>
-            );
-          })}
-          {!isAdmin&&unread>0&&<button onClick={onMarkAllRead} style={{...S.btnGhost,alignSelf:"flex-end",fontSize:14,padding:"8px 18px",borderColor:"#B71C1C",color:"#B71C1C"}}>✓ Mark all as read</button>}
-        </div>
-      )}
-    </div>
-  );
-}
+
+
 
 function LoginScreen({ onLogin, accounts }) {
   const [login, setLogin] = useState(()=>{ try{return localStorage.getItem("dn_login")||"";}catch{return "";} });
@@ -499,40 +439,9 @@ function SummarySection({ label, color, borderColor, value, isAdmin, onChange, o
   );
 }
 
-function EditableMessage({ msg, canEdit, onEdit, onDelete }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(msg.text);
-  const save = () => { onEdit(draft); setEditing(false); };
-  return (
-    <div style={{alignSelf:msg.from==="parent"?"flex-end":"flex-start",maxWidth:"80%"}}>
-      <div style={{background:msg.from==="parent"?"#E8F5E9":"#FFFDE7",border:`1px solid ${msg.from==="parent"?"#C8E6C9":"#F9A825"}`,borderRadius:12,padding:"11px 14px"}}>
-        {editing?(
-          <div>
-            <textarea value={draft} onChange={e=>setDraft(e.target.value)} style={{width:"100%",background:"#fff",border:"1.5px solid #A5D6A7",borderRadius:7,padding:"7px 10px",fontSize:14,outline:"none",fontFamily:"'Inter','Segoe UI',sans-serif",resize:"vertical",minHeight:60,boxSizing:"border-box"}}/>
-            <div style={{display:"flex",gap:6,marginTop:6}}>
-              <button onClick={save} style={{background:"#1B5E20",border:"none",borderRadius:6,padding:"5px 12px",color:"#fff",fontSize:12,cursor:"pointer",fontWeight:"700"}}>💾 Save</button>
-              <button onClick={()=>{setDraft(msg.text);setEditing(false);}} style={{background:"#eee",border:"none",borderRadius:6,padding:"5px 10px",color:"#555",fontSize:12,cursor:"pointer"}}>Cancel</button>
-            </div>
-          </div>
-        ):(
-          <>
-            <p style={{color:"#1A1A1A",fontSize:14,margin:"0 0 5px",lineHeight:1.5}}>{msg.text}{msg.edited&&<span style={{color:"#7A977A",fontSize:11}}> (edited)</span>}</p>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
-              <p style={{color:"#7A977A",fontSize:12,margin:0}}>{msg.from==="parent"?"👨‍👩‍👧 Parent":"👩‍🏫 Teacher"} · {msg.time}</p>
-              {canEdit&&<div style={{display:"flex",gap:4}}>
-                <button onClick={()=>setEditing(true)} style={{background:"none",border:"none",color:"#1B5E20",cursor:"pointer",fontSize:13}}>✏️</button>
-                <button onClick={onDelete} style={{background:"none",border:"none",color:"#C62828",cursor:"pointer",fontSize:13}}>🗑️</button>
-              </div>}
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
 
 
-function MessageSection({ student, isAdmin, onSave }) {
+function MessageSection({ student, isAdmin, isParent, onSave }) {
   const [selYear,setSelYear] = useState(2026);
   const [selMonth,setSelMonth] = useState(MONTHS[new Date().getMonth()]);
   const [draft,setDraft] = useState("");
@@ -586,7 +495,7 @@ function MessageSection({ student, isAdmin, onSave }) {
                   <p style={{color:C.text,fontSize:15,margin:"0 0 5px",lineHeight:1.5}}>{m.text}{m.edited&&<span style={{color:C.textLight,fontSize:11,marginLeft:6}}>(edited)</span>}</p>
                   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
                     <p style={{color:C.textLight,fontSize:12,margin:0}}>{m.from==="parent"?"👨‍👩‍👧 Parent":"👩‍🏫 Teacher"} · {m.time}</p>
-                    {isAdmin&&m.from==="teacher"&&(
+                    {(isAdmin&&m.from==="teacher"||(isParent&&m.from==="parent"))&&(
                       <div style={S.row}>
                         <button onClick={()=>{setEditIdx(m._idx);setEditText(m.text);}} style={{background:"none",border:"none",color:C.gold,cursor:"pointer",fontSize:13}}>✏️</button>
                         <button onClick={()=>deleteMsg(m._idx)} style={{background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:13}}>🗑️</button>
@@ -627,7 +536,7 @@ function PaymentSection({ student, onSave, isAdmin }) {
               <span style={{color:C.text,fontSize:15,fontWeight:"bold",minWidth:90}}>{m}</span>
               <span style={{fontSize:18}}>{paid===true?"✅":paid===false?"❌":"⏳"}</span>
               <span style={{color:paid===true?C.success:paid===false?C.danger:C.textLight,fontSize:15,fontWeight:"bold",flex:1}}>{paid===true?"PAID":paid===false?"NOT PAID":"NOT SET"}</span>
-              {isAdmin&&<div style={S.row}>
+              {<div style={S.row}>
                 <button onClick={()=>toggle(m,true)} style={{...S.btnSuccess,padding:"6px 14px",fontSize:14,opacity:paid===true?0.5:1}} disabled={paid===true}>✓ Paid</button>
                 <button onClick={()=>toggle(m,false)} style={{...S.btnDanger,padding:"6px 14px",fontSize:14,opacity:paid===false?0.5:1}} disabled={paid===false}>✗ Not Paid</button>
                 <button onClick={()=>toggle(m,null)} style={{background:"#f0f0f0",border:`1px solid ${C.border}`,borderRadius:8,padding:"6px 12px",fontSize:13,color:C.textMid,cursor:"pointer",fontFamily:FONT}} disabled={paid===null}>↺ Reset</button>
@@ -756,7 +665,7 @@ function AccountManager({ accounts, onSave, students }) {
 
 function StudentDetail({ student, onBack, isAdmin, isParent, onSave }) {
   const [tab,setTab] = useState("progress");
-  const [activeWeek,setActiveWeek] = useState(0);
+  const [openWeeks,setOpenWeeks] = useState([true,false,false,false]);
   const [selYear,setSelYear] = useState(2026);
   const [selMonth,setSelMonth] = useState(MONTHS[new Date().getMonth()]);
   const [editing,setEditing] = useState(false);
@@ -768,17 +677,6 @@ function StudentDetail({ student, onBack, isAdmin, isParent, onSave }) {
   const summaryChange=(k,v)=>setLocal(p=>({...p,summary:{...p.summary,[k]:v}}));
   const save=async()=>{ setSaving(true); await onSave(local); setSaving(false); setEditing(false); };
   const cancel=()=>{ setLocal(JSON.parse(JSON.stringify(student))); setEditing(false); };
-  const handleSaveSection = async (type, field, value) => {
-    const u = JSON.parse(JSON.stringify(local));
-    if(!u.quranProgress) u.quranProgress=EMPTY_PROGRESS();
-    if(type==="feedback"){
-      u.quranProgress[selYear][selMonth][activeWeek].teacherFeedback=value;
-      if(value){const ts=new Date().toLocaleString("en-AU");u.parentNotifs=[...(u.parentNotifs||[]),{text:`📝 Feedback added — ${local.name} ${selMonth} Week ${activeWeek+1}`,time:ts,read:false}];}
-    } else {
-      value.forEach((v,di)=>{ u.quranProgress[selYear][selMonth][activeWeek].days[di][field]=v; });
-    }
-    setLocal(u); await onSave(u);
-  };
   const toggleDisable = async () => { const u={...local,disabled:!local.disabled}; setLocal(u); await onSave(u); };
   const deleteStudent = async () => {
     if(!window.confirm("Delete this student? This cannot be undone.")) return;
@@ -849,18 +747,33 @@ function StudentDetail({ student, onBack, isAdmin, isParent, onSave }) {
         <>
           <div style={{display:"flex",gap:12,marginBottom:16,flexWrap:"wrap"}}>
             <div><label style={S.label}>YEAR</label>
-              <select value={selYear} onChange={e=>{setSelYear(Number(e.target.value));setActiveWeek(0);}} style={{...S.inputSm,cursor:"pointer",color:C.primary,fontWeight:"bold"}}>{YEARS.map(y=><option key={y} value={y}>{y}</option>)}</select></div>
+              <select value={selYear} onChange={e=>{setSelYear(Number(e.target.value));}} style={{...S.inputSm,cursor:"pointer",color:C.primary,fontWeight:"bold"}}>{YEARS.map(y=><option key={y} value={y}>{y}</option>)}</select></div>
             <div><label style={S.label}>MONTH</label>
-              <select value={selMonth} onChange={e=>{setSelMonth(e.target.value);setActiveWeek(0);}} style={{...S.inputSm,cursor:"pointer"}}>{MONTHS.map(m=><option key={m} value={m}>{m}</option>)}</select></div>
+              <select value={selMonth} onChange={e=>{setSelMonth(e.target.value);}} style={{...S.inputSm,cursor:"pointer"}}>{MONTHS.map(m=><option key={m} value={m}>{m}</option>)}</select></div>
           </div>
-          <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
-            {getWeeks().map((w,i)=>(
-              <button key={i} onClick={()=>setActiveWeek(i)} style={S.tab(activeWeek===i)}>Week {w.week}</button>
-            ))}
-          </div>
-          <div style={{marginBottom:20}}>
-            <WeekTable weekData={getWeeks()[activeWeek]} onSaveSection={handleSaveSection} isAdmin={isAdmin}/>
-          </div>
+          {getWeeks().map((w,i)=>(
+            <div key={i} style={{marginBottom:14,border:`1.5px solid ${C.border}`,borderRadius:14,overflow:"hidden"}}>
+              <div onClick={()=>setOpenWeeks(prev=>{const n=[...prev];n[i]=!n[i];return n;})} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 18px",background:openWeeks[i]?"#E8F5E9":"#f6fbf6",cursor:"pointer",userSelect:"none"}}>
+                <span style={{color:C.primary,fontWeight:"700",fontSize:15}}>📅 Week {w.week}</span>
+                <span style={{color:C.textMid,fontSize:18,transition:"transform 0.2s",transform:openWeeks[i]?"rotate(0deg)":"rotate(-90deg)"}}>▾</span>
+              </div>
+              {openWeeks[i]&&(
+                <div style={{padding:"0 0 4px"}}>
+                  <WeekTable weekData={w} onSaveSection={(type,field,value)=>{
+                    const u=JSON.parse(JSON.stringify(local));
+                    if(!u.quranProgress) u.quranProgress=EMPTY_PROGRESS();
+                    if(type==="feedback"){
+                      u.quranProgress[selYear][selMonth][i].teacherFeedback=value;
+                      if(value){const ts=new Date().toLocaleString("en-AU");u.parentNotifs=[...(u.parentNotifs||[]),{text:`📝 Feedback added — ${local.name} ${selMonth} Week ${i+1}`,time:ts,read:false}];}
+                    } else {
+                      value.forEach((v,di)=>{ u.quranProgress[selYear][selMonth][i].days[di][field]=v; });
+                    }
+                    setLocal(u); onSave(u);
+                  }} isAdmin={isAdmin}/>
+                </div>
+              )}
+            </div>
+          ))}
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:20}}>
             <SummarySection label="✦ STRENGTHS" color={C.success} borderColor={C.success}
               value={local.summary?.strengths||""} isAdmin={isAdmin}
@@ -877,7 +790,7 @@ function StudentDetail({ student, onBack, isAdmin, isParent, onSave }) {
           </div>
         </>
       )}
-      {tab==="messages"&&<MessageSection student={local} isAdmin={isAdmin} onSave={onSave}/>}
+      {tab==="messages"&&<MessageSection student={local} isAdmin={isAdmin} isParent={isParent} onSave={onSave}/>}
       {tab==="payment"&&<PaymentSection student={local} onSave={onSave} isAdmin={isAdmin}/>}
       <div style={{marginTop:30,paddingTop:20,borderTop:`1px solid ${C.border}`}}>
         <BackButton onBack={onBack}/>
@@ -986,30 +899,7 @@ function AdminView({ students, onSelect, onSetupSlot, accounts, onSaveAccounts }
   );
 }
 
-const ACCOUNTS = [
-  { login:"admin@darulnoor", password:"darulnoor", role:"admin", studentIds:STUDENTS.map(s=>s.id) },
-  { login:"asiya.i@darulnoor", password:"islam123", role:"parent", studentIds:[1] },
-  { login:"aafiyah.z@darulnoor", password:"zainab123", role:"parent", studentIds:[2] },
-  { login:"family.nawed@darulnoor", password:"nawed123", role:"parent", studentIds:[3,4] },
-  { login:"aowaab.y@darulnoor", password:"yousuf123", role:"parent", studentIds:[5] },
-  { login:"hajera.h@darulnoor", password:"hamda123", role:"parent", studentIds:[6] },
-  { login:"anaya.k@darulnoor", password:"kamal123", role:"parent", studentIds:[7] },
-  { login:"hamza.s@darulnoor", password:"sazzad123", role:"parent", studentIds:[8] },
-  { login:"maryam.b@darulnoor", password:"rabi123", role:"parent", studentIds:[9] },
-  { login:"eesa.z@darulnoor", password:"zohaib123", role:"parent", studentIds:[10] },
-  { login:"yusra.s@darulnoor", password:"sheikh123", role:"parent", studentIds:[11] },
-  { login:"family.munsi@darulnoor", password:"munsi123", role:"parent", studentIds:[12,13] },
-  { login:"yusuf.aisha@darulnoor", password:"family123", role:"parent", studentIds:[14,15] },
-  { login:"muhammad.fatima@darulnoor", password:"family123", role:"parent", studentIds:[16,17,18,19] },
-  { login:"azwar.r@darulnoor", password:"rahman123", role:"parent", studentIds:[20] },
-  { login:"family.abdulaziz@darulnoor", password:"abdulaziz123", role:"parent", studentIds:[21,22] },
-  { login:"halima.a@darulnoor", password:"hassan123", role:"parent", studentIds:[23] },
-  { login:"family.siddik@darulnoor", password:"siddik123", role:"parent", studentIds:[24,25,26] },
-  { login:"abrar.f@darulnoor", password:"farzad123", role:"parent", studentIds:[27] },
-  { login:"ali.f@darulnoor", password:"faraz123", role:"parent", studentIds:[28] },
-  { login:"family.ali@darulnoor", password:"ali123", role:"parent", studentIds:[34,35] },
-  { login:"family.d@darulnoor", password:"dfamily123", role:"parent", studentIds:[36,37,38] },
-];
+const ACCOUNTS = DEFAULT_ACCOUNTS;
 
 // ── Editable Field with Save/Edit/Delete ──
 function EditableField({ label, value, onSave, onDelete, multiline=false, placeholder="" }) {
@@ -1156,6 +1046,9 @@ function Dashboard({ account, onLogout }) {
   const [showNotif,setShowNotif] = useState(false);
   const [showAnnounce,setShowAnnounce] = useState(false);
   const [announcements,setAnnouncements] = useState([]);
+  const [announceTitle,setAnnounceTitle] = useState("");
+  const [announceDraft,setAnnounceDraft] = useState("");
+  const [announceSaving,setAnnounceSaving] = useState(false);
   const [dashTab,setDashTab] = useState("students");
   const isAdmin = account.role==="admin";
   const isParent = account.role==="parent";
@@ -1200,6 +1093,26 @@ function Dashboard({ account, onLogout }) {
     const newList = announcements.map((a,i)=>i===idx?updated:a);
     await setDoc(doc(db,"config","announcements"),{list:newList});
     setAnnouncements(newList);
+  };
+
+  const markOneNotif = async (notif) => {
+    if(isAdmin){
+      for(const s of students){
+        const idx=(s.adminNotifs||[]).findIndex(n=>n===notif||( n.text===notif.text&&n.time===notif.time&&!n.read));
+        if(idx>=0){
+          const updated={...s,adminNotifs:s.adminNotifs.map((n,i)=>i===idx?{...n,read:true}:n)};
+          await handleSave(updated); return;
+        }
+      }
+    } else {
+      for(const s of visibleStudents){
+        const idx=(s.parentNotifs||[]).findIndex(n=>n===notif||(n.text===notif.text&&n.time===notif.time&&!n.read));
+        if(idx>=0){
+          const updated={...s,parentNotifs:s.parentNotifs.map((n,i)=>i===idx?{...n,read:true}:n)};
+          await handleSave(updated); return;
+        }
+      }
+    }
   };
 
   const clearAllNotifs = async () => {
@@ -1250,7 +1163,13 @@ function Dashboard({ account, onLogout }) {
                     <button onClick={()=>setShowAnnounce(false)} style={{background:"none",border:"none",color:"#7A977A",cursor:"pointer",fontSize:20}}>✕</button>
                   </div>
                   {isAdmin&&(
-                    <AnnouncementCompose onPost={addAnnouncement}/>
+                    <div style={{padding:"14px 18px",borderBottom:`1px solid ${C.border}`,background:"#fffdf8"}}>
+                      <input value={announceTitle} onChange={e=>setAnnounceTitle(e.target.value)} placeholder="Title (e.g. Holiday Notice)" style={{...S.inputSm,width:"100%",boxSizing:"border-box",marginBottom:8}}/>
+                      <textarea value={announceDraft} onChange={e=>setAnnounceDraft(e.target.value)} placeholder="Write announcement..." style={{...S.inputSm,width:"100%",boxSizing:"border-box",resize:"vertical",minHeight:65,lineHeight:1.5,marginBottom:10}}/>
+                      <button onClick={async()=>{ if(!announceTitle.trim()||!announceDraft.trim()) return; setAnnounceSaving(true); await addAnnouncement({title:announceTitle.trim(),text:announceDraft.trim(),time:new Date().toLocaleString("en-AU"),readBy:[]}); setAnnounceTitle(""); setAnnounceDraft(""); setAnnounceSaving(false); }} disabled={announceSaving||!announceTitle.trim()||!announceDraft.trim()} style={{...S.btnGold,fontSize:14,padding:"9px 18px",opacity:(announceSaving||!announceTitle.trim()||!announceDraft.trim())?0.5:1}}>
+                        {announceSaving?"Posting...":"📤 Post"}
+                      </button>
+                    </div>
                   )}
                   <div style={{maxHeight:340,overflowY:"auto"}}>
                     {announcements.length===0
@@ -1289,19 +1208,28 @@ function Dashboard({ account, onLogout }) {
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 18px",borderBottom:"1px solid #C8E6C9",background:"#E8F5E9"}}>
                     <p style={{color:"#1B5E20",fontSize:15,fontWeight:"700",margin:0}}>🔔 Notifications</p>
                     <div style={{display:"flex",gap:10}}>
-                      <button onClick={clearAllNotifs} style={{background:"none",border:"none",color:"#4E6B4E",cursor:"pointer",fontSize:13,fontFamily:"'Inter','Segoe UI',sans-serif"}}>Mark all read</button>
+                      <button onClick={clearAllNotifs} style={{background:"none",border:"none",color:"#4E6B4E",cursor:"pointer",fontSize:13,fontFamily:FONT}}>Mark all read</button>
                       <button onClick={()=>setShowNotif(false)} style={{background:"none",border:"none",color:"#7A977A",cursor:"pointer",fontSize:18}}>✕</button>
                     </div>
                   </div>
                   <div style={{maxHeight:340,overflowY:"auto"}}>
                     {myNotifs.length===0
                       ?<p style={{color:"#7A977A",fontSize:14,margin:"20px",textAlign:"center",fontStyle:"italic"}}>No notifications</p>
-                      :[...myNotifs].reverse().map((n,i)=>(
-                        <div key={i} style={{padding:"12px 18px",borderBottom:"1px solid #C8E6C9",background:n.read?"#fff":"#F1F8F1"}}>
-                          <p style={{color:"#1A1A1A",fontSize:14,margin:"0 0 4px",lineHeight:1.4}}>{n.text}</p>
-                          <p style={{color:"#7A977A",fontSize:12,margin:0}}>{n.time}</p>
-                        </div>
-                      ))
+                      :[...myNotifs].reverse().map((n,i)=>{
+                        const isMsg = n.text&&n.text.startsWith("📩");
+                        return (
+                          <div key={i} style={{padding:"12px 18px",borderBottom:"1px solid #C8E6C9",background:n.read?"#fff":"#F1F8F1"}}>
+                            <p style={{color:C.text,fontSize:14,margin:"0 0 4px",lineHeight:1.4}}>{n.text}</p>
+                            <p style={{color:"#7A977A",fontSize:12,margin:"0 0 6px"}}>{n.time}</p>
+                            {!n.read&&(
+                              <div style={S.row}>
+                                <button onClick={async()=>{ await markOneNotif(n); }} style={{background:"none",border:`1px solid ${C.borderMid}`,borderRadius:6,color:C.primaryMid,fontSize:12,cursor:"pointer",padding:"3px 10px",fontFamily:FONT}}>✓ Mark as read</button>
+                                {isMsg&&n.studentId&&<button onClick={()=>{ setShowNotif(false); const s=students.find(st=>st.id===n.studentId); if(s) setSelected(s); }} style={{background:"none",border:`1px solid ${C.gold}`,borderRadius:6,color:C.gold,fontSize:12,cursor:"pointer",padding:"3px 10px",fontFamily:FONT}}>Reply →</button>}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
                     }
                   </div>
                 </div>
@@ -1347,30 +1275,6 @@ function Dashboard({ account, onLogout }) {
   );
 }
 
-function AnnouncementCompose({ onPost }) {
-  const [title,setTitle] = useState("");
-  const [text,setText] = useState("");
-  const [saving,setSaving] = useState(false);
-  const post = async () => {
-    if(!title.trim()||!text.trim()) return;
-    setSaving(true);
-    await onPost({title:title.trim(),text:text.trim(),time:new Date().toLocaleString("en-AU"),read:false});
-    setTitle(""); setText(""); setSaving(false);
-  };
-  return (
-    <div style={{padding:"14px 18px",borderBottom:"1px solid #C8E6C9",background:"#FFFDE7"}}>
-      <p style={{color:"#4E6B4E",fontSize:13,fontWeight:"700",margin:"0 0 8px"}}>NEW ANNOUNCEMENT</p>
-      <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Title (e.g. Holiday Notice)"
-        style={{width:"100%",background:"#fff",border:"1.5px solid #C8E6C9",borderRadius:8,padding:"9px 12px",color:"#1A1A1A",fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:"'Inter','Segoe UI',sans-serif",marginBottom:8}}/>
-      <textarea value={text} onChange={e=>setText(e.target.value)} placeholder="Write announcement..."
-        style={{width:"100%",background:"#fff",border:"1.5px solid #C8E6C9",borderRadius:8,padding:"9px 12px",color:"#1A1A1A",fontSize:14,outline:"none",fontFamily:"'Inter','Segoe UI',sans-serif",resize:"vertical",minHeight:65,boxSizing:"border-box",marginBottom:10}}/>
-      <button onClick={post} disabled={saving||!title.trim()||!text.trim()}
-        style={{background:"linear-gradient(135deg,#F9A825,#9E6C00)",border:"none",borderRadius:8,padding:"9px 18px",color:"#fff",fontSize:14,fontWeight:"700",cursor:"pointer",fontFamily:"'Inter','Segoe UI',sans-serif",opacity:(saving||!title.trim()||!text.trim())?0.5:1}}>
-        {saving?"Posting...":"📤 Post"}
-      </button>
-    </div>
-  );
-}
 
 export default function App() {
   const [account,setAccount] = useState(null);
