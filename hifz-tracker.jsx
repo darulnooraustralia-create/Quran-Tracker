@@ -1053,7 +1053,7 @@ function Dashboard({ account, onLogout }) {
   const parentNotifs = isParent ? visibleStudents.flatMap(s=>(s.parentNotifs||[])) : [];
   const myNotifs = isAdmin ? adminNotifs : parentNotifs;
   const unreadCount = myNotifs.filter(n=>!n.read).length;
-  const unreadAnnounce = announcements.filter(a=>!(a.readBy||[]).includes(account.login)).length;
+  const unreadAnnounce = isAdmin ? 0 : announcements.filter(a=>!(a.readBy||[]).includes(account.login)).length;
 
   useEffect(()=>{
     const unsubs=STUDENTS.map(s=>{
@@ -1071,7 +1071,7 @@ function Dashboard({ account, onLogout }) {
   };
 
   const addAnnouncement = async (ann) => {
-    const newList=[...announcements,ann];
+    const newList=[...announcements,{...ann,readBy:[account.login]}];
     await setDoc(doc(db,"config","announcements"),{list:newList});
     setAnnouncements(newList);
   };
