@@ -247,9 +247,6 @@ function AnnouncementBadge({ announcements, isAdmin, onAdd, onDelete, onEdit }) 
   );
 }
 
-
-}
-
 function LoginScreen({ onLogin, accounts }) {
   const [login, setLogin] = useState(()=>{ try{return localStorage.getItem("dn_login")||"";}catch{return "";} });
   const [password, setPassword] = useState(()=>{ try{return localStorage.getItem("dn_pass")||"";}catch{return "";} });
