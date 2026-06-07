@@ -514,8 +514,18 @@ function MessageSection({ student, isAdmin, isParent, onSave }) {
 function PaymentSection({ student, onSave, isAdmin }) {
   const [selYear,setSelYear] = useState(2026);
   const [saving,setSaving] = useState(false);
-  const payments = student.payments||EMPTY_PAYMENTS();
-  const toggle = async (month, val) => { setSaving(true); const u=JSON.parse(JSON.stringify(payments)); u[selYear][month].paid=val; await onSave({...student,payments:u}); setSaving(false); };
+  const [local,setLocal] = useState(student);
+  useEffect(()=>setLocal(student),[student]);
+  const payments = local.payments||EMPTY_PAYMENTS();
+  const toggle = async (month, val) => {
+    setSaving(true);
+    const u=JSON.parse(JSON.stringify(payments));
+    u[selYear][month].paid=val;
+    const updated={...local,payments:u};
+    setLocal(updated);
+    await onSave(updated);
+    setSaving(false);
+  };
   return (
     <div style={S.card}>
       <p style={{color:C.primary,fontSize:15,fontWeight:"bold",letterSpacing:1,margin:"0 0 16px"}}>💳 PAYMENT STATUS</p>
